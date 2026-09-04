@@ -55,71 +55,300 @@
     box.appendChild(sel);
   }
   function initPlayer() {
-    var video = document.getElementById('player');
     var box = document.getElementById('player-box');
-    pstat = document.getElementById('pstat');
-    pmsg = pstat ? pstat.querySelector('.msg') : null;
-    pbtn = pstat ? pstat.querySelector('.btn') : null;
-    if (!video || !UZ.playUrl) return;
-    var url = UZ.playUrl;
-    video.addEventListener('playing', hideStatus);
-    video.addEventListener('canplay', hideStatus);
-    if (!/\.m3u8($|\?)/.test(url)) { video.src = url; hideStatus(); return; }
-    var native = !!video.canPlayType('application/vnd.apple.mpegurl');
-    status(UZ.T.p_loading || '...');
-    loadHls(function (ok) {
-      if (ok && window.Hls.isSupported()) {
-        startHls(url, 0);
-      } else if (native) {
-        video.src = url;
-        video.play().catch(function () {});
-      } else {
-        status(UZ.T.p_hlsfail || 'hls.js', true, function () { location.reload(); });
+    if (!box || !UZ.playUrl) return;
+
+    loadHls(function () {
+      if (window.Artplayer) {
+        if (window.art) {
+          try { window.art.destroy(false); } catch (e) {}
+        }
+
+        var isM3U8 = /\.m3u8($|\?)/i.test(UZ.playUrl);
+        var art = new window.Artplayer({
+          container: box,
+          url: UZ.playUrl,
+          poster: UZ.poster || '',
+          title: document.title,
+          volume: 0.85,
+          isLive: false,
+          autoplay: true,
+          muted: false,
+          pip: true,
+          autoSize: false,
+          autoMini: false,
+          screenshot: true,
+          setting: true,
+          loop: false,
+          flip: true,
+          playbackRate: true,
+          aspectRatio: true,
+          fullscreen: true,
+          fullscreenWeb: true,
+          theme: '#ff0000',
+          hotkey: true,
+          fastForward: true,
+          miniProgressBar: false,
+          lock: true,
+          gesture: true,
+          playsInline: true,
+          controls: UZ.isLive ? [
+            {
+              name: 'live-badge',
+              position: 'left',
+              index: 15,
+              html: '<div style="display:inline-flex;align-items:center;gap:6px;background:#c00;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.5px;cursor:pointer;margin-right:8px;transition:all .2s" title="Snap to live edge"><span style="width:6px;height:6px;border-radius:50%;background:#fff"></span>LIVE</div>',
+              click: function () {
+                if (art.hls && art.hls.liveSyncPosition) {
+                  art.currentTime = art.hls.liveSyncPosition;
+                } else {
+                  art.currentTime = art.duration || 999999;
+                }
+                art.play().catch(function () {});
+                art.notice.show = 'Synced to Live';
+              }
+            }
+          ] : [],
+          customType: {
+            m3u8: function (video, url, instance) {
+              if (window.Hls && window.Hls.isSupported()) {
+                if (instance.hls) instance.hls.destroy();
+                var hls = new window.Hls({
+                  liveSyncDurationCount: 3,
+                  maxBufferLength: 60,
+                  maxMaxBufferLength: 600,
+                  backBufferLength: 600,
+                  liveBackBufferLength: 600,
+                  manifestLoadingMaxRetry: 8,
+                  manifestLoadingRetryDelay: 1000
+                });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                instance.hls = hls;
+                instance.on('destroy', function () { hls.destroy(); });
+
+                hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
+                  var levels = hls.levels || [];
+                  if (levels.length > 1) {
+                    var selector = [{ default: true, html: 'Auto', level: -1 }];
+                    levels.forEach(function (lvl, i) {
+                      selector.push({
+                        html: lvl.height ? lvl.height + 'p' : Math.round(lvl.bitrate / 1000) + 'k',
+                        level: i
+                      });
+                    });
+                    instance.controls.update({
+                      name: 'quality',
+                      index: 20,
+                      position: 'right',
+                      html: 'Auto',
+                      selector: selector,
+                      onSelect: function (item) {
+                        hls.currentLevel = item.level !== undefined ? item.level : -1;
+                        return item.html;
+                      }
+                    });
+                  }
+                  if (instance.autoplay) {
+                    video.play().catch(function () {});
+                  }
+                });
+
+                hls.on(window.Hls.Events.ERROR, function (evt, data) {
+                  if (data.fatal) {
+                    if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+                      hls.startLoad();
+                    } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+                      hls.recoverMediaError();
+                    }
+                  }
+                });
+              } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+              } else {
+                instance.notice.show = 'HLS format not supported by browser';
+              }
+            }
+          }
+        });
+
+        window.art = art;
+
+        // In live streams, handle DVR window seeking, relative starting point, and live edge state
+        if (UZ.isLive) {
+          var video = art.video;
+          var isDragging = false;
+
+          function getDvrRange() {
+            if (!video || !video.seekable || video.seekable.length === 0) {
+              var ct = (video && video.currentTime) || 0;
+              return { start: 0, end: ct, duration: 0 };
+            }
+            var start = video.seekable.start(0);
+            var end = video.seekable.end(video.seekable.length - 1);
+            return {
+              start: start,
+              end: end,
+              duration: Math.max(0, end - start)
+            };
+          }
+
+          function formatDvrTime(sec) {
+            sec = Math.max(0, Math.floor(sec || 0));
+            var h = Math.floor(sec / 3600);
+            var m = Math.floor((sec % 3600) / 60);
+            var s = sec % 60;
+            if (h > 0) {
+              return h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+            }
+            return m + ':' + (s < 10 ? '0' : '') + s;
+          }
+
+          function seekToFraction(fraction) {
+            var range = getDvrRange();
+            if (fraction >= 0.97) {
+              // Snap to absolute end -> Live edge
+              if (art.hls && art.hls.liveSyncPosition) {
+                video.currentTime = art.hls.liveSyncPosition;
+              } else {
+                video.currentTime = range.end;
+              }
+              art.play().catch(function () {});
+              art.notice.show = 'Synced to Live';
+            } else {
+              // Map fraction [0 .. 1] to [range.start .. range.end]
+              // Fraction 0.0 seeks directly to the oldest saved part on our server (0:00)
+              var target = range.start + (fraction * range.duration);
+              target = Math.max(range.start, Math.min(range.end - 0.5, target));
+              video.currentTime = target;
+              art.play().catch(function () {});
+            }
+            updateDvrUI();
+          }
+
+          function updateDvrUI() {
+            var range = getDvrRange();
+            var relCurrent = Math.max(0, video.currentTime - range.start);
+            var behindLive = Math.max(0, range.end - video.currentTime);
+            var isAtLive = behindLive < 3.5;
+
+            // 1. Update Live badge
+            var badge = art.query('.art-control-live-badge') || box.querySelector('.art-control-live-badge');
+            if (badge) {
+              var div = badge.querySelector('div') || badge;
+              div.style.background = isAtLive ? '#c00' : '#444';
+              div.style.opacity = isAtLive ? '1' : '0.7';
+              div.setAttribute('title', isAtLive ? 'Live edge' : 'Click to snap to live');
+            }
+
+            // 2. Update Progress bar width & indicator
+            if (!isDragging) {
+              var pct = isAtLive ? 100 : (range.duration > 0 ? (relCurrent / range.duration) * 100 : 0);
+              pct = Math.min(100, Math.max(0, pct));
+              var playedBar = box.querySelector('.art-progress-played');
+              var indicator = box.querySelector('.art-progress-indicator');
+              if (playedBar) playedBar.style.width = pct + '%';
+              if (indicator) indicator.style.left = pct + '%';
+            }
+
+            // 3. Update Time display
+            var timeCtrl = box.querySelector('.art-control-time');
+            if (timeCtrl) {
+              if (isAtLive) {
+                timeCtrl.innerHTML = '<span style="color:#ff3333;font-weight:700;display:inline-flex;align-items:center;gap:4px">' +
+                  '<span style="width:6px;height:6px;border-radius:50%;background:#ff3333"></span>LIVE</span>' +
+                  '<span style="color:#ddd;margin-left:8px;font-family:monospace;font-size:12px">' + formatDvrTime(relCurrent) + '</span>';
+              } else {
+                timeCtrl.innerHTML = '<span style="color:#fff;font-family:monospace;font-size:12px">' + formatDvrTime(relCurrent) + '</span>' +
+                  '<span style="color:#777;margin:0 3px">/</span>' +
+                  '<span style="color:#aaa;font-family:monospace;font-size:12px">' + formatDvrTime(range.duration) + '</span>' +
+                  '<span style="color:#ff7777;font-size:11px;margin-left:5px">(-' + formatDvrTime(behindLive) + ')</span>';
+              }
+            }
+          }
+
+          // Intercept timeline clicks and drags to support absolute-start seeking
+          var progressBar = box.querySelector('.art-control-progress');
+          if (progressBar) {
+            function getFractionFromEvent(e) {
+              var rect = progressBar.getBoundingClientRect();
+              var clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+              var x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+              return rect.width > 0 ? x / rect.width : 0;
+            }
+
+            progressBar.addEventListener('mousedown', function (e) {
+              if (e.button !== 0) return;
+              isDragging = true;
+              var frac = getFractionFromEvent(e);
+              seekToFraction(frac);
+            }, true);
+
+            window.addEventListener('mousemove', function (e) {
+              if (!isDragging) return;
+              var frac = getFractionFromEvent(e);
+              var playedBar = box.querySelector('.art-progress-played');
+              var indicator = box.querySelector('.art-progress-indicator');
+              if (playedBar) playedBar.style.width = (frac * 100) + '%';
+              if (indicator) indicator.style.left = (frac * 100) + '%';
+            }, true);
+
+            window.addEventListener('mouseup', function (e) {
+              if (!isDragging) return;
+              isDragging = false;
+              var frac = getFractionFromEvent(e);
+              seekToFraction(frac);
+            }, true);
+
+            progressBar.addEventListener('touchstart', function (e) {
+              isDragging = true;
+              var frac = getFractionFromEvent(e);
+              seekToFraction(frac);
+            }, { capture: true, passive: true });
+
+            window.addEventListener('touchend', function (e) {
+              if (!isDragging) return;
+              isDragging = false;
+            }, { capture: true, passive: true });
+          }
+
+          art.on('video:timeupdate', updateDvrUI);
+          art.on('video:seeking', updateDvrUI);
+          art.on('video:seeked', updateDvrUI);
+          art.on('video:progress', updateDvrUI);
+          setInterval(updateDvrUI, 1000);
+        }
+
+        // Sync theater mode with page layout
+        art.on('fullscreenWeb', function (state) {
+          document.body.classList.toggle('theater-mode', state);
+        });
+
+        // Add custom YouTube keyboard shortcuts
+        window.addEventListener('keydown', function (e) {
+          if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+          var video = art.video;
+          var start = (video && video.seekable && video.seekable.length) ? video.seekable.start(0) : 0;
+          var end = (video && video.seekable && video.seekable.length) ? video.seekable.end(video.seekable.length - 1) : (art.duration || 999999);
+
+          if (e.key === 'j' || e.key === 'J') {
+            e.preventDefault();
+            art.currentTime = Math.max(start, art.currentTime - 10);
+            art.notice.show = '-10s';
+          } else if (e.key === 'l' || e.key === 'L') {
+            e.preventDefault();
+            art.currentTime = Math.min(end, art.currentTime + 10);
+            art.notice.show = '+10s';
+          } else if (e.key === 'k' || e.key === 'K') {
+            e.preventDefault();
+            art.toggle();
+          } else if (e.key === 't' || e.key === 'T') {
+            e.preventDefault();
+            art.fullscreenWeb = !art.fullscreenWeb;
+          }
+        });
       }
     });
-    var netFails = 0;
-    function startHls(src, attempt) {
-      if (window.__hls) { try { window.__hls.destroy(); } catch (e) {} }
-      var hls = new window.Hls({
-        liveSyncDurationCount: 3,
-        maxBufferLength: 20,
-        manifestLoadingMaxRetry: 6,
-        manifestLoadingRetryDelay: 1500,
-        levelLoadingMaxRetry: 6,
-        fragLoadingMaxRetry: 6,
-        lowLatencyMode: false
-      });
-      window.__hls = hls;
-      hls.loadSource(src);
-      hls.attachMedia(video);
-      buildQuality(hls, box);
-      hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
-        status(UZ.T.p_wait || '...');
-        video.play().catch(function () {});
-      });
-      hls.on(window.Hls.Events.FRAG_BUFFERED, hideStatus);
-      hls.on(window.Hls.Events.ERROR, function (evt, data) {
-        if (!data.fatal) return;
-        if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-          try { hls.recoverMediaError(); } catch (e) {}
-          return;
-        }
-        if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-          netFails++;
-          if (attempt === 0 && netFails >= 2 && UZ.altUrl) {
-            netFails = 0;
-            return startHls(UZ.altUrl, 1);
-          }
-          if (netFails > 6) {
-            return status(UZ.T.p_offline || '...', true, function () { netFails = 0; startHls(src, attempt); });
-          }
-          status(UZ.T.p_wait || '...');
-          setTimeout(function () { try { hls.startLoad(); } catch (e) {} }, 2500);
-          return;
-        }
-        status(UZ.T.p_offline || '...', true, function () { location.reload(); });
-      });
-    }
   }
   function initActions() {
     var lb = document.getElementById('like-btn');

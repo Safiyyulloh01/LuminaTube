@@ -197,6 +197,50 @@ body.nosidebar .main { margin-left: 0; }
   border: 1px solid var(--border);
 }
 .player-box video { width: 100%; height: 100%; display: block; background: #000; }
+.player-box .art-video-player { width: 100% !important; height: 100% !important; position: absolute; inset: 0; }
+
+/* YouTube Progress Bar & Draggable Indicator */
+.art-video-player .art-bottom { padding: 0 10px 6px 10px !important; }
+.art-video-player .art-progress {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: 6px !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 50 !important;
+  margin-bottom: 2px !important;
+}
+.art-video-player .art-progress-inner {
+  height: 4px !important;
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  transition: height 0.1s ease !important;
+}
+.art-video-player .art-progress:hover .art-progress-inner,
+.art-video-player.art-hover .art-progress-inner {
+  height: 6px !important;
+}
+.art-video-player .art-progress-loaded { background-color: rgba(255, 255, 255, 0.45) !important; }
+.art-video-player .art-progress-played { background-color: #ff0000 !important; }
+.art-video-player .art-progress-indicator {
+  display: block !important;
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background-color: #ff0000 !important;
+  box-shadow: 0 0 6px rgba(255, 0, 0, 0.9) !important;
+  transform: scale(1) !important;
+  z-index: 99 !important;
+}
+.art-video-player .art-progress-tip {
+  background: rgba(24, 24, 24, 0.95) !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 4px !important;
+  padding: 3px 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
 .offline-msg {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   flex-direction: column; gap: 10px; color: var(--dim); background: #070a11; text-align: center; padding: 20px;

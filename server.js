@@ -1,3 +1,4 @@
+require('dotenv').config();
 const http = require('node:http');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -7,18 +8,36 @@ const session = require('express-session');
 const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 
 const db = require('./db.js');
 const { generateCaptcha } = require('./captcha.js');
 const { setupSocket } = require('./socket.js');
 
 const app = express();
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
 const io = new Server(server, { path: '/socket.io' });
 
 const PORT = process.env.PORT || 3000;
 const SITE_NAME = process.env.SITE_NAME || 'LuminaTube';
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const SESSION_SECRET = process.env.SESSION_SECRET || 'lumina_prod_secure_secret_fallback_key_2026';
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Juda ko‘p urinishlar bo‘ldi. Iltimos, 15 daqiqadan so‘ng qayta urinib ko‘ring.'
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -30,14 +49,32 @@ const storage = multer.diskStorage({
     cb(null, dest);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || (file.fieldname === 'video' ? '.mp4' : '.jpg');
+    const rawExt = path.extname(file.originalname).toLowerCase();
+    let ext = rawExt;
+    if (file.fieldname === 'video' && !['.mp4', '.webm', '.mkv'].includes(rawExt)) ext = '.mp4';
+    if ((file.fieldname === 'avatar' || file.fieldname === 'thumbnail') && !['.jpg', '.jpeg', '.png', '.webp'].includes(rawExt)) ext = '.jpg';
     const rand = crypto.randomBytes(8).toString('hex');
     cb(null, Date.now() + '_' + rand + ext);
   }
 });
+
+const fileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (file.fieldname === 'video') {
+    if (['.mp4', '.webm', '.mkv'].includes(ext)) return cb(null, true);
+    return cb(new Error('Faqat MP4, WebM va MKV formatdagi videolar qabul qilinadi.'));
+  }
+  if (file.fieldname === 'avatar' || file.fieldname === 'thumbnail') {
+    if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) return cb(null, true);
+    return cb(new Error('Faqat JPG, PNG va WebP formatdagi rasmlar qabul qilinadi.'));
+  }
+  cb(null, false);
+};
+
 const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 }
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter
 });
 
 app.set('view engine', 'ejs');
@@ -47,7 +84,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 const sessionMiddleware = session({
-  name: 'uzl.sid',
+  name: 'lt.sid',
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -63,11 +100,64 @@ io.engine.use(sessionMiddleware);
 setupSocket(io);
 
 app.use('/static', express.static(path.join(__dirname, 'public/static')));
-app.use('/img', express.static(path.join(__dirname, 'public/img')));
 app.use('/thumbs', express.static(path.join(__dirname, 'public/uploads/thumbs')));
+app.get('/thumbs/:file', (req, res) => {
+  const filename = path.basename(req.params.file);
+  const localPath = path.join(__dirname, 'public/uploads/thumbs', filename);
+  if (fs.existsSync(localPath)) {
+    return res.sendFile(localPath);
+  }
+  res.redirect('/img/no-thumb.svg');
+});
+
+app.get('/uploads/thumbs/:file', (req, res) => {
+  res.redirect('/thumbs/' + path.basename(req.params.file));
+});
+
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
+// Native VOD Streaming with HTTP 206 Partial Content (Range Requests)
+app.get('/vod/:file', (req, res) => {
+  const filePath = path.join(__dirname, 'public/vod', path.basename(req.params.file));
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('Video not found');
+  }
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = (end - start) + 1;
+    const file = fs.createReadStream(filePath, { start, end });
+    const head = {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': 'video/mp4',
+    };
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      'Content-Length': fileSize,
+      'Content-Type': 'video/mp4',
+      'Accept-Ranges': 'bytes',
+    };
+    res.writeHead(200, head);
+    fs.createReadStream(filePath).pipe(res);
+  }
+});
 app.use('/vod', express.static(path.join(__dirname, 'public/vod')));
-app.use('/hls', express.static(path.join(__dirname, 'public/hls')));
+
+// Native HLS Streaming (OBS / Ingest)
+app.use('/hls', express.static(path.join(__dirname, 'public/hls'), {
+  setHeaders: (res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+}));
 
 app.use((req, res, next) => {
   if (req.session.user) {
@@ -175,6 +265,13 @@ app.get('/watch/:id', requireAuth, (req, res) => {
     ORDER BY c.id DESC
   `).all(id);
 
+  let playUrl = stream.play_url || '';
+  const localVodPath = path.join(__dirname, 'public/vod', `vod_${stream.id}.mp4`);
+  if (fs.existsSync(localVodPath)) {
+    playUrl = `/vod/vod_${stream.id}.mp4`;
+  }
+  stream.play_url = playUrl;
+
   res.render('watch', {
     stream,
     subCount,
@@ -278,18 +375,29 @@ app.post('/admin/role', requireAuth, (req, res) => {
   res.redirect('/admin');
 });
 
+function safeRedirect(target) {
+  if (typeof target === 'string' && target.startsWith('/') && !target.startsWith('//') && !target.startsWith('/\\')) {
+    return target;
+  }
+  return '/';
+}
+
 app.get('/login', (req, res) => {
   if (req.session.user) return res.redirect('/');
   res.render('login', { next: req.query.next || '/' });
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', authLimiter, (req, res) => {
   const { website, login, password, next } = req.body;
   if (website) return res.status(400).send('Bot detected');
 
+  if (!login || !password) {
+    return res.render('login', { error: 'Login yoki parol noto‘g‘ri', next: safeRedirect(next) });
+  }
+
   const user = db.prepare('SELECT * FROM users WHERE login = ?').get(login);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.render('login', { error: 'Login yoki parol noto‘g‘ri', next });
+    return res.render('login', { error: 'Login yoki parol noto‘g‘ri', next: safeRedirect(next) });
   }
 
   req.session.user = {
@@ -302,7 +410,7 @@ app.post('/login', (req, res) => {
     donate_url: user.donate_url
   };
 
-  res.redirect(next && next.startsWith('/') ? next : '/');
+  res.redirect(safeRedirect(next));
 });
 
 app.get('/register', (req, res) => {
@@ -310,25 +418,28 @@ app.get('/register', (req, res) => {
   res.render('register', { next: req.query.next || '/' });
 });
 
-app.post('/register', (req, res) => {
+app.post('/register', authLimiter, (req, res) => {
   const { website, login, password, password2, captcha, next } = req.body;
 
   if (website) return res.status(400).send('Bot detected');
 
-  if (!captcha || !req.session.captcha || captcha.trim().toUpperCase() !== req.session.captcha) {
-    return res.status(400).render('register', { error: 'Rasmdagi kod noto‘g‘ri kiritildi.', next });
+  const expectedCaptcha = req.session.captcha;
+  delete req.session.captcha;
+
+  if (!captcha || !expectedCaptcha || captcha.trim().toUpperCase() !== expectedCaptcha) {
+    return res.status(400).render('register', { error: 'Rasmdagi kod noto‘g‘ri kiritildi.', next: safeRedirect(next) });
   }
 
   if (!/^[A-Za-z0-9_-]{3,20}$/.test(login)) {
-    return res.status(400).render('register', { error: 'Login formati noto‘g‘ri (3-20 ta belgi).', next });
+    return res.status(400).render('register', { error: 'Login formati noto‘g‘ri (3-20 ta belgi).', next: safeRedirect(next) });
   }
   if (!password || password.length < 6 || password !== password2) {
-    return res.status(400).render('register', { error: 'Parollar mos kelmadi yoki 6 belgidan kam.', next });
+    return res.status(400).render('register', { error: 'Parollar mos kelmadi yoki 6 belgidan kam.', next: safeRedirect(next) });
   }
 
   const existing = db.prepare('SELECT id FROM users WHERE login = ?').get(login);
   if (existing) {
-    return res.status(400).render('register', { error: 'Bu login band.', next });
+    return res.status(400).render('register', { error: 'Bu login band.', next: safeRedirect(next) });
   }
 
   const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
@@ -352,7 +463,7 @@ app.post('/register', (req, res) => {
     donate_url: null
   };
 
-  res.redirect(next && next.startsWith('/') ? next : '/');
+  res.redirect(safeRedirect(next));
 });
 
 app.post('/logout', (req, res) => {
@@ -399,7 +510,7 @@ app.post('/api/sub/:channelId', requireAuth, (req, res) => {
   res.json({ subbed, count });
 });
 
-app.post('/api/comment/:id', requireAuth, (req, res) => {
+app.post('/api/comment/:id', apiLimiter, requireAuth, (req, res) => {
   const streamId = parseInt(req.params.id, 10);
   const body = (req.body.body || '').trim();
   if (!body) return res.status(400).json({ error: 'empty_comment' });
@@ -600,6 +711,30 @@ app.delete('/api/studio/mod/:uid', requireAuth, (req, res) => {
 app.delete('/api/studio/ban/:uid', requireAuth, (req, res) => {
   const uid = parseInt(req.params.uid, 10);
   db.prepare('DELETE FROM chat_bans WHERE channel_id = ? AND user_id = ?').run(req.session.user.id, uid);
+  res.json({ ok: true });
+});
+
+// Native Stream Lifecycle API (For OBS & Native Broadcasts)
+app.post('/api/studio/stream/status', requireAuth, (req, res) => {
+  const { streamId, status, play_url, alt_url, duration } = req.body;
+  const sid = parseInt(streamId, 10);
+  const stream = db.prepare('SELECT * FROM streams WHERE id = ?').get(sid);
+  if (!stream) return res.status(404).json({ error: 'Stream not found' });
+  if (stream.user_id !== req.session.user.id && req.session.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  db.prepare(`
+    UPDATE streams
+    SET status = COALESCE(?, status),
+        play_url = COALESCE(?, play_url),
+        alt_url = COALESCE(?, alt_url),
+        duration = COALESCE(?, duration),
+        ended_at = CASE WHEN ? = 'ended' THEN CURRENT_TIMESTAMP ELSE ended_at END
+    WHERE id = ?
+  `).run(status, play_url, alt_url, duration, status, sid);
+
+  io.emit('home:update');
   res.json({ ok: true });
 });
 

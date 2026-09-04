@@ -10,6 +10,9 @@ if (!fs.existsSync(dataDir)) {
 const db = new DatabaseSync(path.join(dataDir, 'luminatube.db'));
 
 db.exec(`
+  PRAGMA journal_mode = WAL;
+  PRAGMA busy_timeout = 5000;
+  PRAGMA synchronous = NORMAL;
   PRAGMA foreign_keys = ON;
 
   CREATE TABLE IF NOT EXISTS users (

@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/static/css/watch-mobile.css?v=2">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <script src="/static/js/app.js"></script>
+<script src="/static/js/artplayer.js"></script>
 </head>
 <body>
 <%- include('partials/header') %>
@@ -18,15 +19,7 @@
 <div class="wrap">
 <div class="watch">
   <div class="wcol-main">
-    <div class="player-box" id="player-box">
-      <video id="player" controls playsinline preload="auto"
-             poster="<%= stream.thumbnail || '/img/no-thumb.svg' %>"></video>
-      <div class="pstat" id="pstat">
-        <div class="spin"></div>
-        <div class="msg"><%= lang === 'ru' ? 'Загрузка плеера…' : 'Pleyer yuklanmoqda…' %></div>
-        <button class="btn sm sec" hidden><%= lang === 'ru' ? 'Повторить' : 'Qayta urinish' %></button>
-      </div>
-    </div>
+    <div class="player-box" id="player-box"></div>
     <div class="m-info" id="m-info">
       <h1 class="vtitle"><%= stream.title %></h1>
       <div class="vbar">
@@ -67,9 +60,15 @@
       </div>
       <div class="vdesc">
         <div class="stats">
-          <span><%= stream.views %> <%= lang === 'ru' ? 'просмотров' : 'marta ko‘rilgan' %></span>
-          <span class="sep">·</span>
-          <span><%= lang === 'ru' ? 'Запись эфира' : 'Yakunlangan efir' %></span>
+          <% if (stream.status === 'live') { %>
+            <span class="pill live" style="background:#c00;color:#fff;font-weight:700;padding:2px 8px;border-radius:4px;font-size:11px;letter-spacing:0.5px"><%= lang === 'ru' ? 'В ЭФИРЕ' : 'JONLI EFIR' %></span>
+            <span class="sep">·</span>
+            <span><%= stream.views %> <%= lang === 'ru' ? 'зрителей' : 'tomoshabin' %></span>
+          <% } else { %>
+            <span><%= stream.views %> <%= lang === 'ru' ? 'просмотров' : 'marta ko‘rilgan' %></span>
+            <span class="sep">·</span>
+            <span><%= lang === 'ru' ? 'Запись эфира' : 'Yakunlangan efir' %></span>
+          <% } %>
         </div>
         <div class="txt"><%= stream.description || '' %></div>
       </div>
@@ -165,6 +164,7 @@ window.UZ = {
   status: "<%= stream.status %>",
   playUrl: "<%= stream.play_url || '' %>",
   altUrl: "<%= stream.alt_url || '' %>",
+  poster: "<%= stream.thumbnail || '/img/no-thumb.svg' %>",
   isLive: <%= stream.status === 'live' %>,
   canMod: <%= canMod %>,
   isOwner: <%= isOwner %>,
