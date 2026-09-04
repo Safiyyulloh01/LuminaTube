@@ -7,7 +7,8 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-4.x-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com)
 [![Socket.io](https://img.shields.io/badge/Socket.io-4.x-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io)
-[![SQLite](https://img.shields.io/badge/SQLite-Native_Sync-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
+[![SQLite](https://img.shields.io/badge/SQLite-WAL_Mode-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
+[![Artplayer](https://img.shields.io/badge/Player-Artplayer_%2B_DVR-FF0000?style=for-the-badge)](https://artplayer.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0047AB?style=for-the-badge)](LICENSE)
 
 <p align="center">
@@ -28,12 +29,20 @@
 
 ## ✨ Key Features
 
+### ⏪ YouTube-Style Live DVR & Time-Shifting
+* **Live Scrubber & Rewind**: Viewers can scrub backwards through ongoing broadcasts to re-watch moments from the stream's beginning without waiting for the stream to end.
+* **Synchronized Live Edge Tracking (`[• LIVE]`)**:
+  * Real-time `[• LIVE] MM:SS` status indicator on the custom player controls.
+  * Automatically dims when a viewer rewinds behind the broadcast edge.
+  * Single-click snap button (`[• LIVE]`) immediately jumps the video back to real-time.
+* **Adaptive Artplayer Engine**: Multi-bitrate quality selection, low-latency HLS.js buffering, screenshot capture, picture-in-picture (PiP), playback speed controls, and native mobile fallback.
+* **HTTP 206 Partial Content (VOD Streaming)**: Native byte-range request streaming for uploaded MP4 and WebM videos, enabling instant seeking without downloading entire video files.
+
 ### 📡 Adaptive Media & Broadcasting
 * **Dual Broadcasting Modes**:
   * **Live RTMP Ingestion**: Stream seamlessly via **OBS Studio**, **Streamlabs**, or **PRISM Live** using unique private stream keys.
   * **Direct Video File Upload (VOD)**: Upload pre-recorded `.mp4` and `.webm` files directly through the web Studio (up to 500 MB).
-* **Adaptive Player (HLS.js)**: Multi-bitrate switching (Auto, 720p, etc.), low-latency buffering, retry reconnection logic, and native Safari/iOS HLS fallback.
-* **Automated VOD Archival**: Stream recordings are instantly indexed as past broadcasts with automatic expiration handling.
+* **Automated VOD Archival**: Broadcast recordings are instantly indexed as past broadcasts with view counters and comment archives.
 
 ### 💬 Real-Time Live Chat
 * **Ultra-Low Latency**: Powered by WebSockets via **Socket.IO** with dynamic room isolation.
@@ -51,9 +60,13 @@
 * **Content Management**: Visibility toggles (**Public** vs **Private**), metadata editor, and one-click deletion.
 * **Community Dashboard**: Roster management for channel moderators and unban controls.
 
-### 🛡️ Security & Bot Mitigation
+### 🛡️ Security & Production Hardening
 * **Zero Hardcoded Secrets**: First-user bootstrap automatically designates the first registered user as **Admin**; subsequent accounts are viewers.
-* **Dynamic SVG CAPTCHA**: Native algorithmic SVG generator (`/captcha.svg`) with character rotation, noise circles, and wavy distortion lines.
+* **High-Performance SQLite WAL**: Configured with `PRAGMA journal_mode = WAL;` and `busy_timeout = 5000;` allowing high concurrency without database lock errors.
+* **Brute-Force & Bot Rate Limiting**: `express-rate-limit` protects `/login` and `/register` against credential stuffing, and curbs spam on comments.
+* **Strict File Extension Filtering**: Multer enforces strict MIME and file extension validation (`.mp4, .webm, .mkv` for videos; `.jpg, .jpeg, .png, .webp` for images), blocking any script or executable injection.
+* **Open Redirect Sanitation**: Sanitized redirect handler prevents protocol-relative (`//evil.com`) redirect attacks.
+* **Single-Use Dynamic SVG CAPTCHA**: Algorithmic SVG generator (`/captcha.svg`) destroyed immediately after verification to eliminate replay attacks.
 * **Honeypot Trap**: Invisible form trap fields catch and reject automated spam bots before processing.
 * **Live Username Validation**: Real-time debounce endpoint (`/check-login`) checks handle availability without page reloads.
 
@@ -240,7 +253,7 @@ Your site is now securely available globally at:
 LuminaTube/
 ├── public/                 # Static assets & media
 │   ├── static/css/         # style.css, ui-fix.css, watch-mobile.css
-│   ├── static/js/          # app.js, studio.js, watch.js, sub.js, hls.min.js
+│   ├── static/js/          # app.js, studio.js, watch.js, artplayer.js, hls.min.js
 │   ├── img/                # favicon.svg, no-avatar.svg, no-thumb.svg
 │   ├── uploads/            # Avatars & custom thumbnails
 │   └── vod/                # Video recordings & uploaded media
@@ -255,9 +268,10 @@ LuminaTube/
 │   ├── admin.ejs           # Platform administrator panel
 │   ├── login.ejs           # Authentication
 │   └── register.ejs        # Registration with SVG CAPTCHA
-├── db.js                   # High-speed native SQLite database schema
+├── db.js                   # High-speed native SQLite database (WAL Mode)
 ├── socket.js               # Real-time WebSocket engine (Socket.IO)
 ├── captcha.js              # Algorithmic SVG CAPTCHA engine
+├── .env.example            # Environment configuration template
 └── server.js               # Express application entrypoint
 ```
 
