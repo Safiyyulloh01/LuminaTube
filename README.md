@@ -17,6 +17,7 @@
 [Key Features](#-key-features) •
 [Color Palette](#-color-palette--design-system) •
 [Quick Start](#-quick-start) •
+[Custom Domain Setup](#-connecting-a-custom-domain--production-setup) •
 [Broadcasting via OBS](#-broadcasting-via-obs-studio) •
 [Architecture](#-architecture) •
 [API & WebSockets](#-api--websocket-events)
@@ -44,6 +45,7 @@
   * **Quick Emoji Bar & Mentions**: Single-tap emoji reactions and `@username` auto-insertion.
 
 ### 🎛️ Creator Studio (`/studio`)
+* **Direct Video Uploader**: Simple drag-and-drop or file selection for `.mp4` and `.webm` files with custom thumbnail support.
 * **Channel Customization**: Upload square avatars (JPG, PNG, WebP) with client-side canvas preview, custom bio, and donation links (`idonate.uz` integration).
 * **Broadcast Configuration**: Secret stream key regeneration, upcoming broadcast title, custom 16:9 thumbnail upload, and slow mode delay toggles.
 * **Content Management**: Visibility toggles (**Public** vs **Private**), metadata editor, and one-click deletion.
@@ -61,17 +63,17 @@
 
 LuminaTube features a custom-engineered UI that breaks away from conventional generic templates, using deep oceanic midnight tones paired with sharp cobalt and neon cyan accents:
 
-| Token | Hex Code | Visual Sample | UI Application |
+| Token | Hex Code | Visual Swatch | UI Application |
 | :--- | :---: | :---: | :--- |
-| **Main Background** | `#0B0F19` | `■` | Deepest midnight navy page foundation |
-| **Surface / Card** | `#161E2E` | `■` | Container background for video cards, sidebars & chat |
-| **Borders / Dividers** | `#1E293B` | `■` | Subtle line dividers, search borders, separators |
-| **Primary Accent** | `#0047AB` | `■` | Cobalt Blue brand mark, primary buttons, subscribe actions |
-| **Interactive Accent**| `#3B82F6` | `■` | Electric Blue active tabs, hover states, toggles |
-| **Neon Highlight** | `#60A5FA` | `■` | Badges, view-count emphasis, active glowing accents |
-| **Cyan Highlight** | `#A0D6FF` | `■` | Secondary accents, subtle pill highlights |
-| **Primary Text** | `#F1F5F9` | `■` | High-contrast readable typography for titles and headers |
-| **Muted Text** | `#94A3B8` | `■` | Metadata, timestamps, follower counts, descriptions |
+| **Main Background** | `#0B0F19` | ![#0B0F19](https://img.shields.io/badge/-%230B0F19-0B0F19?style=flat-square) | Deepest midnight navy page foundation |
+| **Surface / Card** | `#161E2E` | ![#161E2E](https://img.shields.io/badge/-%23161E2E-161E2E?style=flat-square) | Container background for video cards, sidebars & chat |
+| **Borders / Dividers** | `#1E293B` | ![#1E293B](https://img.shields.io/badge/-%231E293B-1E293B?style=flat-square) | Subtle line dividers, search borders, separators |
+| **Primary Brand** | `#0047AB` | ![#0047AB](https://img.shields.io/badge/-%230047AB-0047AB?style=flat-square) | Cobalt Blue brand mark, primary buttons, subscribe actions |
+| **Interactive Accent**| `#3B82F6` | ![#3B82F6](https://img.shields.io/badge/-%233B82F6-3B82F6?style=flat-square) | Electric Blue active tabs, hover states, toggles |
+| **Neon Highlight** | `#60A5FA` | ![#60A5FA](https://img.shields.io/badge/-%2360A5FA-60A5FA?style=flat-square) | Badges, view-count emphasis, active glowing accents |
+| **Cyan Highlight** | `#A0D6FF` | ![#A0D6FF](https://img.shields.io/badge/-%23A0D6FF-A0D6FF?style=flat-square) | Secondary accents, subtle pill highlights |
+| **Primary Text** | `#F1F5F9` | ![#F1F5F9](https://img.shields.io/badge/-%23F1F5F9-F1F5F9?style=flat-square) | High-contrast readable typography for titles and headers |
+| **Muted Text** | `#94A3B8` | ![#94A3B8](https://img.shields.io/badge/-%2394A3B8-94A3B8?style=flat-square) | Metadata, timestamps, follower counts, descriptions |
 
 ---
 
@@ -111,9 +113,116 @@ The application will be live at:
 
 ---
 
+## 🌐 Connecting a Custom Domain & Production Setup
+
+To run LuminaTube on a public domain (e.g., `https://yourdomain.com` or `https://stream.yourdomain.com`) with automated SSL and 24/7 uptime, follow this production guide:
+
+### Step 1: Point Your DNS Records
+Go to your domain registrar (Cloudflare, Namecheap, GoDaddy, etc.) and add an **A Record**:
+
+| Type | Host / Name | Value / IP | TTL |
+| :--- | :--- | :--- | :--- |
+| `A` | `@` (or subdomain like `stream`) | `YOUR_SERVER_PUBLIC_IP` | Auto / 1 min |
+| `A` | `www` (optional) | `YOUR_SERVER_PUBLIC_IP` | Auto / 1 min |
+
+---
+
+### Step 2: Keep the App Running 24/7 with PM2
+Use **PM2** process manager so LuminaTube automatically starts on server reboots and recovers from any crashes:
+
+```bash
+# Install PM2 globally
+npm install -g pm2
+
+# Start LuminaTube in the background
+pm2 start server.js --name "luminatube"
+
+# Configure PM2 to launch on system boot
+pm2 startup
+pm2 save
+```
+
+Useful PM2 commands:
+* `pm2 status` — Check server status
+* `pm2 logs luminatube` — View live application logs
+* `pm2 restart luminatube` — Restart the server
+
+---
+
+### Step 3: Configure Nginx as Reverse Proxy
+Install and configure **Nginx** to forward incoming HTTPS traffic and WebSockets to LuminaTube:
+
+```bash
+sudo apt update
+sudo apt install nginx -y
+```
+
+Create an Nginx configuration file for your domain:
+```bash
+sudo nano /etc/nginx/sites-available/luminatube
+```
+
+Paste the following production configuration (replace `yourdomain.com` with your actual domain):
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+
+    # Allow large video file uploads (up to 500 MB)
+    client_max_body_size 500M;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        # WebSocket support (essential for Socket.IO live chat)
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Forward real visitor IP and protocol headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeouts for persistent live chat connections
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+}
+```
+
+Enable the configuration and reload Nginx:
+```bash
+sudo ln -s /etc/nginx/sites-available/luminatube /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+---
+
+### Step 4: Secure with Free SSL Certificate (HTTPS)
+Use **Certbot (Let's Encrypt)** to obtain a free SSL certificate with automatic 90-day renewal:
+
+```bash
+# Install Certbot
+sudo apt install certbot python3-certbot-nginx -y
+
+# Obtain and install SSL automatically
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+```
+
+Select the option to automatically redirect all HTTP traffic to **HTTPS**.
+
+Your site is now securely available globally at:
+🔒 **`https://yourdomain.com`**
+
+---
+
 ## 📡 Broadcasting via OBS Studio
 
-1. Open **LuminaTube Studio** at `http://localhost:3000/studio`.
+1. Open **LuminaTube Studio** at `https://yourdomain.com/studio`.
 2. Navigate to the **Efir sozlamalari** (*Stream Settings*) tab.
 3. Reveal your private **Stream Key** (`live_xxxxxxxxxx`).
 4. In **OBS Studio**:
