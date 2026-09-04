@@ -1,0 +1,20 @@
+<nav class="side">
+  <a href="/" class="<%= currentTab === 'home' ? 'on' : '' %>">
+    <svg viewBox="0 0 24 24"><path d="M12 3L2 12h3v9h6v-6h2v6h6v-9h3z"/></svg><%= lang === 'ru' ? 'Главная' : 'Bosh sahifa' %>
+  </a>
+  <a href="/subs" class="<%= currentTab === 'subs' ? 'on' : '' %>">
+    <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9zM12 22a2.5 2.5 0 002.45-2h-4.9A2.5 2.5 0 0012 22z"/></svg><%= lang === 'ru' ? 'Подписки' : 'Obunalarim' %>
+  </a>
+  <% if (currentUser) { %>
+    <div class="sep"></div>
+    <a href="/c/<%= currentUser.login %>" class="<%= currentTab === 'channel' ? 'on' : '' %>">
+      <svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 10-5-5 5 5 0 005 5zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5z"/></svg><%= lang === 'ru' ? 'Мой канал' : 'Mening kanalim' %>
+    </a>
+    <a href="/studio" class="<%= currentTab === 'studio' ? 'on' : '' %>">
+      <svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4z"/></svg><%= lang === 'ru' ? 'Студия' : 'Studiya' %>
+    </a>
+    <a href="/settings" class="<%= currentTab === 'settings' ? 'on' : '' %>">
+      <svg viewBox="0 0 24 24"><path d="M19.4 13a7.9 7.9 0 000-2l2-1.6-2-3.4-2.4 1a8 8 0 00-1.7-1L14.9 3h-4l-.4 2.6a8 8 0 00-1.7 1l-2.4-1-2 3.4L6.6 11a7.9 7.9 0 000 2l-2 1.6 2 3.4 2.4-1a8 8 0 001.7 1l.4 2.6h4l.4-2.6a8 8 0 001.7-1l2.4 1 2-3.4zM12.9 15a3 3 0 113-3 3 3 0 01-3 3z"/></svg><%= lang === 'ru' ? 'Настройки' : 'Sozlamalar' %>
+    </a>
+  <% } %>
+</nav>

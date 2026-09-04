@@ -1,0 +1,51 @@
+<header class="hdr">
+  <div class="hdr-l">
+    <button class="burger" onclick="document.body.classList.toggle('side-open')" aria-label="menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="#f1f1f1"><path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z"/></svg>
+    </button>
+    <a class="logo" href="/">
+      <span class="mark"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+      <span>Lumina<span style="color:var(--highlight)">Tube</span></span>
+    </a>
+  </div>
+  <div class="hdr-c">
+    <form class="searchbox" action="/" method="get">
+      <input type="text" name="q" value="<%= locals.query || '' %>" placeholder="<%= lang === 'ru' ? 'Поиск' : 'Qidirish' %>" autocomplete="off">
+      <button type="submit" aria-label="search">
+        <svg viewBox="0 0 24 24"><path d="M20.87 20.17l-5.59-5.59A6.94 6.94 0 0016 10.5 7.5 7.5 0 108.5 18a6.94 6.94 0 004.08-1.28l5.59 5.59zM3 10.5A5.5 5.5 0 118.5 16 5.5 5.5 0 013 10.5z"/></svg>
+      </button>
+    </form>
+  </div>
+  <div class="hdr-r">
+    <div class="lang-sw">
+      <a href="/lang/uz" class="<%= lang === 'uz' ? 'on' : '' %>">UZ</a>
+      <a href="/lang/ru" class="<%= lang === 'ru' ? 'on' : '' %>">RU</a>
+    </div>
+    <% if (currentUser) { %>
+      <a class="icon-btn" href="/studio" title="<%= lang === 'ru' ? 'Студия' : 'Studiya' %>">
+        <svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4z"/></svg>
+      </a>
+      <div class="menu-wrap">
+        <button class="avatar" id="umenu-btn" title="<%= currentUser.login %>">
+          <% if (currentUser.avatar) { %>
+            <img src="<%= currentUser.avatar %>" alt="" style="width:100%;height:100%;object-fit:cover">
+          <% } else { %>
+            <%= currentUser.login.charAt(0).toUpperCase() %>
+          <% } %>
+        </button>
+        <div class="menu" id="umenu">
+          <a href="/c/<%= currentUser.login %>"><%= lang === 'ru' ? 'Мой канал' : 'Mening kanalim' %></a>
+          <a href="/studio"><%= lang === 'ru' ? 'Студия' : 'Studiya' %></a>
+          <% if (currentUser.role === 'admin') { %>
+            <a href="/admin"><%= lang === 'ru' ? 'Панель управления' : 'Boshqaruv paneli' %></a>
+          <% } %>
+          <a href="/settings"><%= lang === 'ru' ? 'Настройки' : 'Sozlamalar' %></a>
+          <hr>
+          <form action="/logout" method="post"><button type="submit"><%= lang === 'ru' ? 'Выйти' : 'Chiqish' %></button></form>
+        </div>
+      </div>
+    <% } else { %>
+      <a class="btn sec" href="/login"><%= lang === 'ru' ? 'Войти' : 'Kirish' %></a>
+    <% } %>
+  </div>
+</header>

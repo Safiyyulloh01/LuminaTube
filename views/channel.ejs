@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f0f0f">
+<title><%= channel.title || channel.login %> — <%= siteName || 'LuminaTube' %></title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/ui-fix.css?v=3">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<script src="/static/js/app.js"></script>
+</head>
+<body>
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+<main class="main">
+<div class="wrap">
+<div class="ch-head">
+  <span class="avatar lg">
+    <% if (channel.avatar) { %>
+      <img src="<%= channel.avatar %>" alt="" style="width:100%;height:100%;object-fit:cover">
+    <% } else { %>
+      <%= channel.login.charAt(0).toUpperCase() %>
+    <% } %>
+  </span>
+  <div style="min-width:0;flex:1">
+    <h1><%= channel.title || channel.login %></h1>
+    <div class="m">@<%= channel.login %> · <span id="sub-count"><%= subCount %></span> <%= lang === 'ru' ? 'подписчиков' : 'obunachi' %> · <%= streams.length %> <%= lang === 'ru' ? 'эфиров' : 'yakunlangan efirlar' %></div>
+    <% if (channel.about) { %>
+      <div style="color:var(--dim);margin-top:6px;font-size:13.5px"><%= channel.about %></div>
+    <% } %>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <% if (currentUser && currentUser.id === channel.id) { %>
+      <a class="btn sec" href="/studio"><%= lang === 'ru' ? 'Студия' : 'Studiya' %></a>
+    <% } else { %>
+      <button class="chip <%= isSubscribed ? '' : 'primary' %>" id="sub-btn" data-ch="<%= channel.id %>" data-on="<%= isSubscribed ? '1' : '0' %>">
+        <%= isSubscribed ? (lang === 'ru' ? 'Вы подписаны' : 'Obuna bo‘lingan') : (lang === 'ru' ? 'Подписаться' : 'Obuna') %>
+      </button>
+      <% if (channel.donate_url) { %>
+        <a class="chip donate-chip" href="<%= channel.donate_url %>" target="_blank" rel="noopener noreferrer nofollow">
+          <svg viewBox="0 0 24 24"><path d="M12 21s-8.5-5.3-8.5-11A4.7 4.7 0 018.2 5.3 4.9 4.9 0 0112 7.2a4.9 4.9 0 013.8-1.9 4.7 4.7 0 014.7 4.7c0 5.7-8.5 11-8.5 11z"/></svg>
+          <%= lang === 'ru' ? 'Донат' : 'Donat' %>
+        </a>
+      <% } %>
+    <% } %>
+  </div>
+</div>
+<% if (streams && streams.length > 0) { %>
+  <div class="grid" style="margin-top:24px">
+    <% streams.forEach(function(s) { %>
+      <a class="card" href="/watch/<%= s.id %>">
+        <div class="thumb">
+          <img src="<%= s.thumbnail || '/img/no-thumb.svg' %>" alt="" loading="lazy">
+          <% if (s.duration) { %>
+            <span class="badge"><%= s.duration %></span>
+          <% } %>
+        </div>
+        <div class="meta">
+          <div style="min-width:0">
+            <h3><%= s.title %></h3>
+            <div class="sub"><%= s.views %> <%= lang === 'ru' ? 'просмотров' : 'marta ko‘rilgan' %></div>
+          </div>
+        </div>
+      </a>
+    <% }); %>
+  </div>
+<% } else { %>
+  <div class="empty" style="margin-top:30px"><%= lang === 'ru' ? 'Пока нет эфиров' : 'Hozircha efirlar yo‘q' %></div>
+<% } %>
+</div>
+</main>
+<div class="toast" id="toast"></div>
+</body>
+</html>

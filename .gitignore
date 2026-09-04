@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Local SQLite databases & logs
+data/*.db
+data/*.db-journal
+data/*.db-wal
+*.log
+
+# Uploaded media & recordings
+public/vod/*
+!public/vod/.gitkeep
+public/uploads/avatars/*
+!public/uploads/avatars/.gitkeep
+public/uploads/thumbs/*
+!public/uploads/thumbs/.gitkeep
+public/hls/*
+!public/hls/.gitkeep
+
+# Environment / Temp files
+.env
+.DS_Store
+*.tmp

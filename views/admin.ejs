@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f0f0f">
+<title>Admin Panel — <%= siteName || 'LuminaTube' %></title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/ui-fix.css?v=3">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<script src="/static/js/app.js"></script>
+</head>
+<body>
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+<main class="main">
+<div class="wrap">
+<h2 class="sect-title">⚙️ Admin Panel</h2>
+<div class="stats-row">
+  <div class="stat"><div class="n"><%= users.length %></div><div class="l">Foydalanuvchilar</div></div>
+  <div class="stat"><div class="n"><%= streams.length %></div><div class="l">Jami efirlar</div></div>
+</div>
+<div class="panel">
+  <h2>Foydalanuvchilar va rollar</h2>
+  <div class="tbl-scroll">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Login</th>
+          <th>Rol</th>
+          <th>Yaratilgan</th>
+          <th>Amallar</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% users.forEach(function(u) { %>
+          <tr>
+            <td>#<%= u.id %></td>
+            <td><b><a href="/c/<%= u.login %>"><%= u.login %></a></b></td>
+            <td><span class="pill <%= u.role %>"><%= u.role %></span></td>
+            <td><%= u.created_at %></td>
+            <td>
+              <form method="post" action="/admin/role" style="display:inline-flex;gap:6px">
+                <input type="hidden" name="user_id" value="<%= u.id %>">
+                <select name="role" style="background:#121212;border:1px solid var(--border);border-radius:6px;padding:4px 8px">
+                  <option value="viewer" <%= u.role === 'viewer' ? 'selected' : '' %>>Viewer</option>
+                  <option value="streamer" <%= u.role === 'streamer' ? 'selected' : '' %>>Streamer</option>
+                  <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>Admin</option>
+                </select>
+                <button class="btn sm" type="submit">O'zgartirish</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+</main>
+<div class="toast" id="toast"></div>
+</body>
+</html>

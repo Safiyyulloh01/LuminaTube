@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f0f0f">
+<title><%= lang === 'ru' ? 'Вход' : 'Kirish' %> — <%= siteName || 'LuminaTube' %></title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<style>
+  .hp-field{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}
+</style>
+<script src="/static/js/app.js"></script>
+</head>
+<body class="nosidebar">
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="logo">
+      <span class="mark"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+      <span>Lumina<span style="color:var(--highlight)">Tube</span></span>
+    </div>
+    <div class="lead"><%= lang === 'ru' ? 'Для использования сайта требуется регистрация.' : 'Saytdan foydalanish uchun ro\'yxatdan o\'tish majburiy.' %></div>
+    <% if (locals.error) { %>
+      <div class="err"><%= error %></div>
+    <% } %>
+    <form method="post" action="/login" autocomplete="on">
+      <input type="hidden" name="next" value="<%= locals.next || '/' %>">
+      <div class="hp-field" aria-hidden="true">
+        <label>Website</label>
+        <input type="text" name="website" tabindex="-1" autocomplete="off">
+      </div>
+      <div class="field">
+        <label><%= lang === 'ru' ? 'Логин' : 'Login' %></label>
+        <input type="text" name="login" id="login-input" required minlength="3" maxlength="20"
+               autocomplete="username" autofocus placeholder="login">
+      </div>
+      <div class="field">
+        <label><%= lang === 'ru' ? 'Пароль' : 'Parol' %></label>
+        <input type="password" name="password" required minlength="6"
+               autocomplete="current-password" placeholder="••••••">
+      </div>
+      <button class="btn" type="submit"><%= lang === 'ru' ? 'Войти' : 'Kirish' %></button>
+    </form>
+    <div class="auth-alt">
+      <%= lang === 'ru' ? 'Нет аккаунта?' : 'Hisobingiz yo\'qmi?' %> <a href="/register"><%= lang === 'ru' ? 'Регистрация' : 'Ro\'yxatdan o\'tish' %></a>
+    </div>
+    <div class="auth-alt" style="margin-top:10px">
+      <a href="/lang/uz" style="color:<%= lang === 'uz' ? '#fff' : '#aaa' %>">O‘zbekcha</a> ·
+      <a href="/lang/ru" style="color:<%= lang === 'ru' ? '#fff' : '#aaa' %>">Русский</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

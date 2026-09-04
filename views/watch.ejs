@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f0f0f">
+<title><%= stream.title %> — <%= siteName || 'LuminaTube' %></title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/ui-fix.css?v=3">
+<link rel="stylesheet" href="/static/css/watch-mobile.css?v=2">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<script src="/static/js/app.js"></script>
+</head>
+<body>
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+<main class="main">
+<div class="wrap">
+<div class="watch">
+  <div class="wcol-main">
+    <div class="player-box" id="player-box">
+      <video id="player" controls playsinline preload="auto"
+             poster="<%= stream.thumbnail || '/img/no-thumb.svg' %>"></video>
+      <div class="pstat" id="pstat">
+        <div class="spin"></div>
+        <div class="msg"><%= lang === 'ru' ? 'Загрузка плеера…' : 'Pleyer yuklanmoqda…' %></div>
+        <button class="btn sm sec" hidden><%= lang === 'ru' ? 'Повторить' : 'Qayta urinish' %></button>
+      </div>
+    </div>
+    <div class="m-info" id="m-info">
+      <h1 class="vtitle"><%= stream.title %></h1>
+      <div class="vbar">
+        <div class="vbar-l">
+          <a class="avatar" href="/c/<%= stream.user_login %>">
+            <% if (stream.avatar) { %>
+              <img src="<%= stream.avatar %>" alt="" style="width:100%;height:100%;object-fit:cover">
+            <% } else { %>
+              <%= stream.user_login.charAt(0).toUpperCase() %>
+            <% } %>
+          </a>
+          <div style="min-width:0">
+            <a class="chname" href="/c/<%= stream.user_login %>"><%= stream.user_title || stream.user_login %></a>
+            <div class="chsubs"><span id="sub-count"><%= subCount %></span> <%= lang === 'ru' ? 'подписчиков' : 'obunachi' %></div>
+          </div>
+          <% if (!currentUser || currentUser.id !== stream.user_id) { %>
+            <button class="chip <%= isSubscribed ? '' : 'primary' %>" id="sub-btn" data-ch="<%= stream.user_id %>" data-on="<%= isSubscribed ? '1' : '0' %>">
+              <%= isSubscribed ? (lang === 'ru' ? 'Вы подписаны' : 'Obuna bo‘lingan') : (lang === 'ru' ? 'Подписаться' : 'Obuna') %>
+            </button>
+          <% } %>
+        </div>
+        <div class="vbar-r">
+          <button class="chip <%= isLiked ? 'on' : '' %>" id="like-btn" data-id="<%= stream.id %>" data-on="<%= isLiked ? '1' : '0' %>">
+            <svg viewBox="0 0 24 24"><path d="M2 20h2.5V10H2zM22 11a2 2 0 00-2-2h-5.6l.9-4.2v-.3a1.5 1.5 0 00-.45-1.05L13.8 2.5 7.6 8.7a2 2 0 00-.6 1.4V19a2 2 0 002 2h8a2 2 0 001.85-1.2l3-7a2 2 0 00.15-.8z"/></svg>
+            <span id="like-count"><%= likeCount %></span>
+          </button>
+          <button class="chip" id="share-btn">
+            <svg viewBox="0 0 24 24"><path d="M14 9V5l7 7-7 7v-4.1C9 13.9 6.3 15.4 4 19c.9-4.5 3.4-9 10-10z"/></svg>
+            <%= lang === 'ru' ? 'Поделиться' : 'Ulashish' %>
+          </button>
+          <% if (stream.donate_url) { %>
+            <a class="chip donate-chip" href="<%= stream.donate_url %>" target="_blank" rel="noopener noreferrer nofollow" title="<%= lang === 'ru' ? 'Поддержать канал' : 'Kanalni qo‘llab-quvvatlash' %>">
+              <svg viewBox="0 0 24 24"><path d="M12 21s-8.5-5.3-8.5-11A4.7 4.7 0 018.2 5.3 4.9 4.9 0 0112 7.2a4.9 4.9 0 013.8-1.9 4.7 4.7 0 014.7 4.7c0 5.7-8.5 11-8.5 11z"/></svg>
+              <%= lang === 'ru' ? 'Донат' : 'Donat' %>
+            </a>
+          <% } %>
+        </div>
+      </div>
+      <div class="vdesc">
+        <div class="stats">
+          <span><%= stream.views %> <%= lang === 'ru' ? 'просмотров' : 'marta ko‘rilgan' %></span>
+          <span class="sep">·</span>
+          <span><%= lang === 'ru' ? 'Запись эфира' : 'Yakunlangan efir' %></span>
+        </div>
+        <div class="txt"><%= stream.description || '' %></div>
+      </div>
+      <div class="comments">
+        <h3><%= comments.length %> <%= lang === 'ru' ? 'комментариев' : 'ta izoh' %></h3>
+        <% if (currentUser) { %>
+          <form id="comment-form" data-id="<%= stream.id %>" style="margin-bottom:20px;display:flex;gap:10px">
+            <span class="avatar sm">
+              <% if (currentUser.avatar) { %>
+                <img src="<%= currentUser.avatar %>" alt="" style="width:100%;height:100%;object-fit:cover">
+              <% } else { %>
+                <%= currentUser.login.charAt(0).toUpperCase() %>
+              <% } %>
+            </span>
+            <div style="flex:1">
+              <textarea placeholder="<%= lang === 'ru' ? 'Оставьте комментарий…' : 'Izoh qoldiring…' %>" required style="width:100%;min-height:42px;background:#121212;border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);resize:vertical"></textarea>
+              <div style="margin-top:6px;text-align:right">
+                <button class="btn sm" type="submit"><%= lang === 'ru' ? 'Отправить' : 'Yuborish' %></button>
+              </div>
+            </div>
+          </form>
+        <% } %>
+        <div id="comment-list">
+          <% comments.forEach(function(c) { %>
+            <div class="citem" data-cid="<%= c.id %>">
+              <span class="avatar sm">
+                <% if (c.avatar) { %>
+                  <img src="<%= c.avatar %>" alt="" style="width:100%;height:100%;object-fit:cover">
+                <% } else { %>
+                  <%= c.login.charAt(0).toUpperCase() %>
+                <% } %>
+              </span>
+              <div class="body">
+                <div class="hd"><b><%= c.login %></b><span><%= c.created_at %></span></div>
+                <div class="txt"><%= c.body %></div>
+                <% if (currentUser && (currentUser.id === c.user_id || currentUser.id === stream.user_id || currentUser.role === 'admin')) { %>
+                  <button class="del" data-cid="<%= c.id %>"><%= lang === 'ru' ? 'Удалить' : 'O\'chirish' %></button>
+                <% } %>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside>
+    <div class="chatbox" id="chatbox">
+      <div class="chat-hd" style="padding:10px 14px;border-bottom:1px solid var(--border);font-weight:600;display:flex;justify-content:space-between;align-items:center">
+        <span><%= lang === 'ru' ? 'Чат трансляции' : 'Jonli chat' %></span>
+        <span class="pill <%= stream.status === 'live' ? 'live' : 'ended' %>"><%= stream.status === 'live' ? (lang === 'ru' ? 'В ЭФИРЕ' : 'JONLI') : (lang === 'ru' ? 'Завершен' : 'Yakunlangan') %></span>
+      </div>
+      <div class="pinned" id="pin-box" style="display:none;background:var(--surface2);padding:6px 12px;border-bottom:1px solid var(--border);font-size:12.5px;gap:6px;align-items:center">
+        <span class="ico">📌</span>
+        <span class="txt" id="pin-txt"></span>
+      </div>
+      <div class="chat-msgs" id="chat-msgs" style="height:380px;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:4px">
+      </div>
+      <div id="new-pill" style="display:none;position:absolute;bottom:75px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;padding:4px 12px;border-radius:14px;font-size:12px;cursor:pointer">↓ <%= lang === 'ru' ? 'Новые сообщения' : 'Yangi xabarlar' %></div>
+      <div class="chat-ft" style="padding:8px 10px;border-top:1px solid var(--border)">
+        <div id="emoji-bar" style="display:flex;gap:6px;margin-bottom:6px">
+          <button class="chip sm" type="button" data-e="🔥">🔥</button>
+          <button class="chip sm" type="button" data-e="❤️">❤️</button>
+          <button class="chip sm" type="button" data-e="👏">👏</button>
+          <button class="chip sm" type="button" data-e="😂">😂</button>
+          <button class="chip sm" type="button" data-e="🚀">🚀</button>
+        </div>
+        <form id="chat-form" style="display:flex;gap:6px">
+          <input type="text" id="chat-in" placeholder="<%= lang === 'ru' ? 'Написать в чат…' : 'Xabar yozing…' %>" maxlength="300" style="flex:1;background:#121212;border:1px solid var(--border);border-radius:18px;padding:7px 14px;color:var(--text);outline:none">
+          <button class="btn sm" id="send-btn" type="submit"><%= lang === 'ru' ? 'Отправить' : 'Yuborish' %></button>
+        </form>
+        <div id="chat-hint" style="color:var(--dim2);font-size:11px;margin-top:4px"></div>
+      </div>
+    </div>
+  </aside>
+</div>
+<div class="ctx" id="user-ctx">
+  <div class="hd" id="ctx-name"></div>
+  <button data-a="reply">Javob berish (@)</button>
+  <button data-a="timeout" data-s="300">5 daqiqa cheklash</button>
+  <button data-a="timeout" data-s="3600">1 soat cheklash</button>
+  <button data-a="ban" class="danger">Chatdan bloklash</button>
+  <button data-a="unban">Blokni yechish</button>
+  <button data-a="delmsg">Xabarni o'chirish</button>
+  <button data-a="pin">Pin qilish</button>
+  <div id="ctx-owner-only">
+    <button data-a="promote">Moderator qilish</button>
+    <button data-a="demote">Moderatorlikdan olish</button>
+  </div>
+</div>
+<script>
+window.UZ = {
+  streamId: <%= stream.id %>,
+  status: "<%= stream.status %>",
+  playUrl: "<%= stream.play_url || '' %>",
+  altUrl: "<%= stream.alt_url || '' %>",
+  isLive: <%= stream.status === 'live' %>,
+  canMod: <%= canMod %>,
+  isOwner: <%= isOwner %>,
+  meId: <%= currentUser ? currentUser.id : 'null' %>,
+  T: {
+    slow_hint: "<%= lang === 'ru' ? 'Медленный режим: 1 сообщение в {n} с' : 'Sekin rejim: har {n} soniyada 1 ta xabar' %>",
+    wait: "{n} s",
+    banned: "<%= lang === 'ru' ? 'Вы заблокированы в этом чате' : 'Siz bu chatda bloklangansiz' %>",
+    muted: "<%= lang === 'ru' ? 'Вы ограничены до {n}' : 'Siz {n} gacha cheklangansiz' %>",
+    chat_disabled: "<%= lang === 'ru' ? 'Чат отключен' : 'Chat o‘chirilgan' %>",
+    chat_empty: "<%= lang === 'ru' ? 'Чат пока пуст' : 'Chat hozircha bo‘sh' %>",
+    ended: "<%= lang === 'ru' ? 'Эфир завершен' : 'Efir yakunlandi' %>",
+    moderator: "<%= lang === 'ru' ? 'Модератор' : 'Moderator' %>",
+    unpin: "<%= lang === 'ru' ? 'Убрать пин' : 'Pinni olib tashlash' %>",
+    copied: "<%= lang === 'ru' ? 'Скопировано' : 'Nusxa olindi' %>",
+    error: "<%= lang === 'ru' ? 'Ошибка' : 'Xatolik' %>",
+    subscribe: "<%= lang === 'ru' ? 'Подписаться' : 'Obuna' %>",
+    subscribed: "<%= lang === 'ru' ? 'Вы подписаны' : 'Obuna bo‘lingan' %>",
+    del_confirm: "<%= lang === 'ru' ? 'Действительно удалить?' : 'Rostdan ham butunlay o‘chirilsinmi?' %>",
+    send: "<%= lang === 'ru' ? 'Отправить' : 'Yuborish' %>",
+    'delete': "<%= lang === 'ru' ? 'Удалить' : 'O‘chirish' %>",
+    p_loading: "<%= lang === 'ru' ? 'Плеер загружается…' : 'Pleyer yuklanmoqda…' %>",
+    p_wait: "<%= lang === 'ru' ? 'Подключение к потоку…' : 'Oqim ulanmoqda…' %>",
+    p_offline: "<%= lang === 'ru' ? 'Поток не найден' : 'Oqim topilmadi' %>",
+    p_hlsfail: "<%= lang === 'ru' ? 'Ошибка библиотеки плеера' : 'Pleyer kutubxonasi yuklanmadi' %>",
+    newmsg: "<%= lang === 'ru' ? 'Новые' : 'Yangi' %>"
+  }
+};
+</script>
+<script src="/static/js/hls.min.js?v=2"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/static/js/watch.js?v=2"></script>
+</div>
+</main>
+<div class="toast" id="toast"></div>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f0f0f">
+<title><%= lang === 'ru' ? 'Регистрация' : 'Ro\'yxatdan o\'tish' %> — <%= siteName || 'LuminaTube' %></title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<style>
+  .cap-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .cap-img{height:56px;width:168px;border-radius:8px;background:#121212;flex:0 0 auto;display:block;user-select:none;-webkit-user-select:none}
+  .cap-reload{background:var(--surface2);border:0;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--text);cursor:pointer}
+  .cap-reload:hover{background:#3f3f3f}
+  .cap-reload svg{width:19px;height:19px;fill:currentColor}
+  .cap-in{flex:1 1 130px;min-width:120px}
+  .cap-in input{width:100%;background:#121212;border:1px solid var(--border);border-radius:8px;padding:10px 12px;outline:none;letter-spacing:3px;text-transform:uppercase;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px}
+  .cap-in input:focus{border-color:#4d7cff}
+  .cap-note{color:var(--dim2);font-size:12px;margin-top:6px}
+  .lg-status{display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:6px;min-height:17px}
+  .lg-status .ico{width:14px;height:14px;flex:0 0 auto;fill:currentColor}
+  .lg-status.s-wait{color:var(--dim2)}
+  .lg-status.s-ok{color:#7bd88f}
+  .lg-status.s-bad{color:#ff9a9a}
+  .lg-status .spin{width:12px;height:12px;border:2px solid #444;border-top-color:var(--dim);border-radius:50%;animation:lgspin .8s linear infinite;flex:0 0 auto}
+  @keyframes lgspin{to{transform:rotate(360deg)}}
+  input.lg-ok{border-color:#2f6b3d!important}
+  input.lg-bad{border-color:#6b2020!important}
+  .hp-field{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}
+</style>
+<script src="/static/js/app.js"></script>
+</head>
+<body class="nosidebar">
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="logo">
+      <span class="mark"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+      <span>Lumina<span style="color:var(--highlight)">Tube</span></span>
+    </div>
+    <div class="lead"><%= lang === 'ru' ? 'Для использования сайта требуется регистрация.' : 'Saytdan foydalanish uchun ro\'yxatdan o\'tish majburiy.' %></div>
+    <% if (locals.error) { %>
+      <div class="err"><%= error %></div>
+    <% } %>
+    <form method="post" action="/register" autocomplete="on">
+      <input type="hidden" name="next" value="<%= locals.next || '/' %>">
+      <div class="hp-field" aria-hidden="true">
+        <label>Website</label>
+        <input type="text" name="website" tabindex="-1" autocomplete="off">
+      </div>
+      <div class="field">
+        <label><%= lang === 'ru' ? 'Логин' : 'Login' %></label>
+        <input type="text" name="login" id="login-input" required minlength="3" maxlength="20"
+               autocomplete="username" autofocus placeholder="login">
+        <div class="lg-status" id="lg-status"></div>
+      </div>
+      <div class="field">
+        <label><%= lang === 'ru' ? 'Пароль' : 'Parol' %></label>
+        <input type="password" name="password" required minlength="6"
+               autocomplete="new-password" placeholder="••••••">
+      </div>
+      <div class="field">
+        <label><%= lang === 'ru' ? 'Повторите пароль' : 'Parolni takrorlang' %></label>
+        <input type="password" name="password2" required minlength="6" autocomplete="new-password" placeholder="••••••">
+        <div class="hint"><%= lang === 'ru' ? '3-20 символов: буквы, цифры, _ и -' : 'Login 3-20 ta belgi: harf, raqam, _ va - bo‘lishi mumkin' %></div>
+      </div>
+      <div class="field">
+        <label><%= lang === 'ru' ? 'Код с картинки' : 'Rasmdagi kod' %></label>
+        <div class="cap-row">
+          <img class="cap-img" id="cap-img" src="/captcha.svg" alt="captcha">
+          <button type="button" class="cap-reload" id="cap-reload" title="<%= lang === 'ru' ? 'Обновить код' : 'Kodni yangilash' %>" aria-label="Kodni yangilash">
+            <svg viewBox="0 0 24 24"><path d="M17.65 6.35A8 8 0 105.6 16.9l1.45-1.45A6 6 0 1112 18v3l4-4-4-4v3a6 6 0 106-6z"/></svg>
+          </button>
+          <div class="cap-in">
+            <input type="text" name="captcha" required maxlength="8" inputmode="latin"
+                   autocomplete="off" autocapitalize="characters" spellcheck="false"
+                   placeholder="<%= lang === 'ru' ? 'Введите код' : 'Kodni kiriting' %>">
+          </div>
+        </div>
+        <div class="cap-note">🛡 <%= lang === 'ru' ? 'Защита от ботов' : 'Botlarga qarshi himoya' %></div>
+      </div>
+      <button class="btn" type="submit"><%= lang === 'ru' ? 'Зарегистрироваться' : 'Ro\'yxatdan o\'tish' %></button>
+    </form>
+    <div class="auth-alt">
+      <%= lang === 'ru' ? 'Уже есть аккаунт?' : 'Hisobingiz bormi?' %> <a href="/login"><%= lang === 'ru' ? 'Войти' : 'Kirish' %></a>
+    </div>
+    <div class="auth-alt" style="margin-top:10px">
+      <a href="/lang/uz" style="color:<%= lang === 'uz' ? '#fff' : '#aaa' %>">O‘zbekcha</a> ·
+      <a href="/lang/ru" style="color:<%= lang === 'ru' ? '#fff' : '#aaa' %>">Русский</a>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var M = {
+    checking: "<%= lang === 'ru' ? 'Проверка…' : 'Tekshirilmoqda…' %>",
+    free: "<%= lang === 'ru' ? 'Логин свободен' : 'Login bo‘sh' %>",
+    taken: "<%= lang === 'ru' ? 'Логин занят' : 'Bu login band' %>",
+    format: "<%= lang === 'ru' ? '3–20 символов: буквы, цифры, _ и -' : '3–20 ta belgi: harf, raqam, _ va -' %>"
+  };
+  var inp = document.getElementById('login-input');
+  var box = document.getElementById('lg-status');
+  if (!inp || !box || !window.fetch) return;
+  var RE = /^[A-Za-z0-9_-]{3,20}$/;
+  var timer = null;
+  var ICO = {
+    ok: '<svg class="ico" viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>',
+    bad: '<svg class="ico" viewBox="0 0 24 24"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>'
+  };
+  function show(cls, text, ico) {
+    box.className = 'lg-status ' + cls;
+    box.innerHTML = (ico || '') + '<span></span>';
+    box.lastChild.textContent = text;
+    inp.classList.toggle('lg-ok', cls === 's-ok');
+    inp.classList.toggle('lg-bad', cls === 's-bad');
+  }
+  function clear() {
+    box.className = 'lg-status';
+    box.textContent = '';
+    inp.classList.remove('lg-ok', 'lg-bad');
+  }
+  function run() {
+    var v = inp.value.trim();
+    if (!v) return clear();
+    if (!RE.test(v)) return show('s-bad', M.format, ICO.bad);
+    show('s-wait', M.checking, '<span class="spin"></span>');
+    fetch('/check-login?login=' + encodeURIComponent(v), {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'fetch' }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (inp.value.trim() !== v) return;
+        if (j.status === 'free') show('s-ok', M.free, ICO.ok);
+        else if (j.status === 'taken') show('s-bad', M.taken, ICO.bad);
+        else show('s-bad', M.format, ICO.bad);
+      })
+      .catch(function () { if (inp.value.trim() === v) clear(); });
+  }
+  inp.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(run, 400);
+  });
+  inp.addEventListener('blur', function () { clearTimeout(timer); run(); });
+})();
+(function () {
+  var img = document.getElementById('cap-img');
+  var btn = document.getElementById('cap-reload');
+  function reload() {
+    if (!img) return;
+    img.src = '/captcha.svg?r=' + Date.now();
+    var inp = document.querySelector('input[name=captcha]');
+    if (inp) { inp.value = ''; inp.focus(); }
+  }
+  if (btn) btn.addEventListener('click', reload);
+  if (img) img.addEventListener('click', reload);
+})();
+</script>
+</body>
+</html>

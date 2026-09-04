@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f0f0f">
+<title><%= lang === 'ru' ? 'Настройки' : 'Sozlamalar' %> — <%= siteName || 'LuminaTube' %></title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/ui-fix.css?v=3">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<script src="/static/js/app.js"></script>
+</head>
+<body>
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+<main class="main">
+<div class="wrap">
+<div style="max-width:620px">
+  <h2 class="sect-title"><%= lang === 'ru' ? 'Настройки' : 'Sozlamalar' %></h2>
+  <% if (locals.error) { %>
+    <div class="err"><%= error %></div>
+  <% } %>
+  <% if (locals.success) { %>
+    <div class="ok"><%= success %></div>
+  <% } %>
+  <div class="panel">
+    <h2>Login: <b><%= currentUser.login %></b>
+      <span class="pill <%= currentUser.role %>">
+        <%= currentUser.role === 'admin' ? (lang === 'ru' ? 'Админ' : 'Admin') : (currentUser.role === 'streamer' ? (lang === 'ru' ? 'Стример' : 'Strimer') : (lang === 'ru' ? 'Зритель' : 'Tomoshabin')) %>
+      </span>
+    </h2>
+    <div class="hint" style="color:var(--dim2);font-size:12.5px">
+      <%= lang === 'ru' ? 'Мой канал' : 'Mening kanalim' %>: <a href="/c/<%= currentUser.login %>" style="color:var(--blue)">/c/<%= currentUser.login %></a>
+    </div>
+  </div>
+  <form class="panel" method="post" action="/settings/password">
+    <h2><%= lang === 'ru' ? 'Пароль' : 'Parol' %></h2>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Текущий пароль' : 'Joriy parol' %></label>
+      <input type="password" name="old_password" required>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Новый пароль' : 'Yangi parol' %></label>
+      <input type="password" name="new_password" required minlength="6">
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Повторите новый пароль' : 'Parolni takrorlang' %></label>
+      <input type="password" name="new_password2" required minlength="6">
+    </div>
+    <button class="btn" type="submit"><%= lang === 'ru' ? 'Сохранить' : 'Saqlash' %></button>
+  </form>
+</div>
+</div>
+</main>
+<div class="toast" id="toast"></div>
+</body>
+</html>

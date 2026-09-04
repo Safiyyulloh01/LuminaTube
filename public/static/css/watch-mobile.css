@@ -1,0 +1,96 @@
+.live-pill {
+  top: 8px; left: 8px; padding: 2px 7px; font-size: 11px; font-weight: 700;
+  border-radius: 4px; gap: 4px; letter-spacing: 0.3px;
+}
+.live-pill::before { width: 5px; height: 5px; }
+.card .badge.live { padding: 1px 5px; font-size: 11px; letter-spacing: 0.3px; }
+.watch-cnt { color: var(--dim); font-size: 13px; white-space: nowrap; }
+.chat-hd .cnt {
+  display: inline-flex; align-items: center; gap: 4px; color: var(--dim); font-size: 12px; font-weight: 400;
+}
+.chat-hd .cnt svg { width: 13px; height: 13px; fill: currentColor; opacity: 0.8; }
+.pstat {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; background: #070A11; color: var(--dim);
+  text-align: center; padding: 20px; z-index: 4; font-size: 13.5px;
+}
+.pstat[hidden] { display: none; }
+.pstat .spin {
+  width: 34px; height: 34px; border: 3px solid var(--surface2); border-top-color: var(--highlight);
+  border-radius: 50%; animation: pspin 0.9s linear infinite;
+}
+@keyframes pspin { to { transform: rotate(360deg); } }
+.pstat .msg { max-width: 340px; line-height: 1.5; color: var(--text); }
+.pstat .btn { margin-top: 2px; }
+.pstat.err .spin { display: none; }
+.chat-in { gap: 6px; }
+.chat-in input { font-size: 15px; }
+.chat-in button {
+  display: flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto;
+}
+.chat-in button svg { width: 18px; height: 18px; fill: currentColor; display: none; }
+.emoji-bar { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+.emoji-bar button {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 3px 9px; font-size: 15px; line-height: 1.4; color: var(--text);
+}
+.emoji-bar button:active { background: var(--hover-sec); }
+.newmsg {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px;
+  background: var(--cobalt); color: #fff; border: 1px solid var(--highlight);
+  border-radius: 16px; padding: 6px 14px; font-size: 12.5px; font-weight: 600;
+  z-index: 8; box-shadow: 0 4px 14px rgba(0, 71, 171, 0.5);
+}
+.newmsg[hidden] { display: none; }
+.chat-body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.chat-msgs { overscroll-behavior: contain; flex: 1 1 auto; min-height: 0; }
+.cmsg .nick { cursor: pointer; }
+.m-tabs { display: none; border-bottom: 1px solid var(--border); background: var(--bg); }
+.m-tabs button {
+  flex: 1; background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 12px 0; color: var(--dim); font-weight: 600; font-size: 14px;
+}
+.m-tabs button.on { color: var(--cyan-light); border-bottom-color: var(--highlight); }
+@media (max-width: 1000px) {
+  .chat-in input { font-size: 16px; padding: 11px 14px; }
+  .chat-in button { min-width: 48px; height: 42px; padding: 0 12px; border-radius: 21px; }
+  .chat-in button svg { display: block; }
+  .chat-in button .send-txt { display: none; }
+  .chat-msgs { font-size: 14.5px; padding: 8px 12px; }
+  .cmsg { padding: 5px 6px; }
+  .chat-ft { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
+  .ctx {
+    left: 0 !important; right: 0; top: auto !important; bottom: 0; min-width: 0;
+    border-radius: 16px 16px 0 0; padding: 6px 0 calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.8);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .ctx .hd { font-size: 15px; padding: 12px 18px; }
+  .ctx button { padding: 14px 18px; font-size: 15px; }
+  body.mwatch { overflow: hidden; }
+  body.mwatch .main { height: 100vh; height: var(--appvh, 100dvh); padding-bottom: 0; }
+  body.mwatch .wrap { padding: 0; height: 100%; max-width: none; }
+  body.mwatch .watch { display: flex; flex-direction: column; height: 100%; gap: 0; }
+  body.mwatch .wcol-main { display: flex; flex-direction: column; min-height: 0; }
+  body.mwatch .player-box { border-radius: 0; flex: 0 0 auto; }
+  body.mwatch .m-tabs { display: flex; flex: 0 0 auto; }
+  body.mwatch .m-info { padding: 14px 14px 30px; }
+  body.mwatch .vtitle { font-size: 17px; margin: 0 0 10px; }
+  body.mwatch.mtab-chat .wcol-main { flex: 0 0 auto; }
+  body.mwatch.mtab-chat .m-info { display: none; }
+  body.mwatch.mtab-chat aside { flex: 1 1 auto; min-height: 0; display: flex; }
+  body.mwatch.mtab-chat .chatbox {
+    flex: 1 1 auto; height: auto; min-height: 0; max-height: none; border: 0; border-radius: 0;
+  }
+  body.mwatch.mtab-info .wcol-main { flex: 1 1 auto; min-height: 0; }
+  body.mwatch.mtab-info .m-info { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  body.mwatch.mtab-info aside { display: none; }
+  .vbar { gap: 10px; }
+  .vbar-r { width: 100%; }
+  .chip { padding: 8px 13px; font-size: 13.5px; }
+}
+@media (max-width: 640px) {
+  .watch-cnt { font-size: 12.5px; }
+  .vtitle { font-size: 17px; }
+}

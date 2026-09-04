@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f0f0f">
+<title><%= lang === 'ru' ? 'Студия' : 'Studiya' %> — <%= currentUser.login %></title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/ui-fix.css?v=3">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<script src="/static/js/app.js"></script>
+</head>
+<body>
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+<main class="main">
+<div class="wrap">
+<h2 class="sect-title"><%= lang === 'ru' ? 'Студия — ' + currentUser.login : 'Studiya — ' + currentUser.login %></h2>
+<div class="tabs">
+  <button class="on" data-tab="chan"><%= lang === 'ru' ? 'Данные канала' : 'Kanal ma‘lumotlari' %></button>
+  <% if (currentUser.role === 'streamer' || currentUser.role === 'admin') { %>
+    <button data-tab="upload">📁 <%= lang === 'ru' ? 'Загрузить видео' : 'Video yuklash' %></button>
+    <button data-tab="stream"><%= lang === 'ru' ? 'Настройки эфира' : 'Efir sozlamalari' %></button>
+    <button data-tab="list"><%= lang === 'ru' ? 'Мои эфиры' : 'Mening efirlarim' %></button>
+    <button data-tab="chat"><%= lang === 'ru' ? 'Модерация чата' : 'Chat boshqaruvi' %></button>
+  <% } %>
+</div>
+<div class="tabpane on" id="pane-chan">
+  <div class="hintbox">
+    <%= lang === 'ru' ? 'Здесь вы можете изменить название, описание и аватар канала.' : 'Bu yerda kanal nomi, tavsifi va rasmini (avatar) o‘zgartirishingiz mumkin. Efir sozlamalari faqat strimerlar uchun.' %>
+  </div>
+  <form class="panel" id="chan-form" enctype="multipart/form-data">
+    <h2>👤 <%= lang === 'ru' ? 'Данные канала' : 'Kanal ma‘lumotlari' %></h2>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Аватар канала' : 'Kanal rasmi' %></label>
+      <div class="upbox">
+        <div class="prev round" style="aspect-ratio:1/1">
+          <img id="avatar-prev" loading="lazy"
+               src="<%= currentUser.avatar || '/img/no-avatar.svg' %>"
+               onerror="this.src='/img/no-avatar.svg'">
+        </div>
+        <div class="ctl">
+          <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" id="avatar-input">
+          <div class="hint"><%= lang === 'ru' ? 'Квадратное фото, JPG/PNG/WebP, макс. 5 MB' : 'Kvadrat rasm, JPG/PNG/WebP, maks. 5 MB' %></div>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Название канала' : 'Kanal nomi' %></label>
+      <input type="text" name="title" maxlength="60" value="<%= currentUser.title || currentUser.login %>">
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'О канале' : 'Kanal haqida' %></label>
+      <textarea name="about" maxlength="2000"><%= currentUser.about || '' %></textarea>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Ссылка на донат' : 'Donat havolasi' %></label>
+      <input type="text" name="donate_url" id="donate-url" placeholder="https://..." value="<%= currentUser.donate_url || '' %>">
+    </div>
+    <div class="field">
+      <label>URL</label>
+      <div class="copybox">
+        <input type="text" readonly id="chan-url" value="/c/<%= currentUser.login %>">
+        <button class="btn sec" type="button" data-copy="chan-url"><%= lang === 'ru' ? 'Копировать' : 'Nusxa olish' %></button>
+      </div>
+    </div>
+    <button class="btn" type="submit"><%= lang === 'ru' ? 'Сохранить' : 'Saqlash' %></button>
+  </form>
+</div>
+<% if (currentUser.role === 'streamer' || currentUser.role === 'admin') { %>
+<div class="tabpane" id="pane-upload">
+  <div class="hintbox">
+    <%= lang === 'ru' ? 'Загрузите готовый видеофайл (MP4 / WebM), чтобы опубликовать его на платформе.' : 'Tayyor video faylni (MP4 / WebM) yuklab, platformada to‘g‘ridan-to‘g‘ri e’lon qilishingiz mumkin.' %>
+  </div>
+  <form class="panel" id="upload-form" enctype="multipart/form-data">
+    <h2>📁 <%= lang === 'ru' ? 'Загрузка видеофайла (VOD)' : 'Video yuklash (VOD)' %></h2>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Видеофайл' : 'Video fayl' %> *</label>
+      <input type="file" name="video" accept="video/mp4,video/webm,video/mkv" required id="video-file-input">
+      <div class="hint"><%= lang === 'ru' ? 'Поддерживаются MP4, WebM (до 500 MB)' : 'MP4, WebM formatlari (500 MB gacha)' %></div>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Название видео' : 'Video sarlavhasi' %> *</label>
+      <input type="text" name="title" required maxlength="100" placeholder="<%= lang === 'ru' ? 'Введите название…' : 'Sarlavha kiriting…' %>">
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Описание' : 'Tavsif' %></label>
+      <textarea name="description" maxlength="2000" placeholder="<%= lang === 'ru' ? 'Краткое описание видео…' : 'Video haqida qisqacha ma‘lumot…' %>"></textarea>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Обложка видео (Thumbnail)' : 'Prevyu rasm (Thumbnail)' %></label>
+      <input type="file" name="thumbnail" accept="image/jpeg,image/png,image/webp">
+      <div class="hint"><%= lang === 'ru' ? 'JPG/PNG/WebP, рекомендуется 16:9' : 'JPG/PNG/WebP, 16:9 tavsiya etiladi' %></div>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Видимость' : 'Ko‘rinish' %></label>
+      <select name="visibility">
+        <option value="public"><%= lang === 'ru' ? 'Открытый (Public)' : 'Ochiq (Public)' %></option>
+        <option value="private"><%= lang === 'ru' ? 'Скрытый (Private)' : 'Yopiq (Private)' %></option>
+      </select>
+    </div>
+    <button class="btn" type="submit" id="upload-submit-btn">
+      <span><%= lang === 'ru' ? 'Опубликовать видео' : 'Videoni joylash' %></span>
+    </button>
+    <div id="upload-status" style="margin-top:12px;font-weight:600;display:none"></div>
+  </form>
+</div>
+<div class="tabpane" id="pane-stream">
+  <div class="panel">
+    <h2>📡 OBS / RTMP <%= lang === 'ru' ? 'Настройки' : 'sozlamalari' %></h2>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Сервер (URL вещания)' : 'Server (URL manzili)' %></label>
+      <div class="copybox">
+        <input type="text" readonly id="rtmp-url" value="rtmp://<%= host %>/live">
+        <button class="btn sec" type="button" data-copy="rtmp-url"><%= lang === 'ru' ? 'Копировать' : 'Nusxa olish' %></button>
+      </div>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Ключ трансляции' : 'Efir kaliti' %></label>
+      <div class="copybox">
+        <input type="password" readonly id="stream-key" value="<%= currentUser.stream_key %>">
+        <button class="btn sec" type="button" id="toggle-key"><%= lang === 'ru' ? 'Показать' : 'Ko\'rsatish' %></button>
+        <button class="btn sec" type="button" id="reset-key"><%= lang === 'ru' ? 'Сбросить' : 'Yangilash' %></button>
+      </div>
+    </div>
+  </div>
+  <form class="panel" id="next-form" enctype="multipart/form-data">
+    <h2>🎬 <%= lang === 'ru' ? 'Следующий эфир' : 'Keyingi efir' %></h2>
+    <input type="hidden" name="slow_mode" value="0">
+    <input type="hidden" name="chat_enabled" value="1">
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Заголовок' : 'Efir sarlavhasi' %></label>
+      <input type="text" name="title" required maxlength="100" value="<%= nextStream ? nextStream.title : '' %>">
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Описание' : 'Tavsif' %></label>
+      <textarea name="description" maxlength="2000"><%= nextStream ? nextStream.description : '' %></textarea>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Обложка' : 'Efir rasmi (Prevyu)' %></label>
+      <div class="upbox">
+        <div class="prev">
+          <img id="thumb-prev" src="<%= (nextStream && nextStream.thumbnail) || '/img/no-thumb.svg' %>" onerror="this.src='/img/no-thumb.svg'">
+        </div>
+        <div class="ctl">
+          <input type="file" name="thumbnail" accept="image/jpeg,image/png,image/webp" id="thumb-input">
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px">
+            <input type="checkbox" name="remove_thumb" value="1"> <%= lang === 'ru' ? 'Удалить обложку' : 'Rasmni olib tashlash' %>
+          </label>
+        </div>
+      </div>
+    </div>
+    <button class="btn" type="submit"><%= lang === 'ru' ? 'Сохранить настройки' : 'Saqlash' %></button>
+  </form>
+  <form class="panel" id="chat-form">
+    <h2>💬 <%= lang === 'ru' ? 'Настройки чата' : 'Chat sozlamalari' %></h2>
+    <div class="field">
+      <label class="switch">
+        <input type="checkbox" name="chat_enabled" <%= (!nextStream || nextStream.chat_enabled) ? 'checked' : '' %>>
+        <span class="track"></span>
+        <span><%= lang === 'ru' ? 'Включить чат' : 'Chatni yoqish' %></span>
+      </label>
+    </div>
+    <div class="field">
+      <label><%= lang === 'ru' ? 'Медленный режим (секунды)' : 'Sekin rejim (soniya)' %></label>
+      <input type="number" name="slow_mode" min="0" max="120" value="<%= (nextStream && nextStream.slow_mode) || 0 %>">
+    </div>
+    <button class="btn" type="submit"><%= lang === 'ru' ? 'Сохранить' : 'Saqlash' %></button>
+  </form>
+</div>
+<div class="tabpane" id="pane-list">
+  <div class="panel">
+    <h2>📹 <%= lang === 'ru' ? 'Мои трансляции' : 'Mening efirlarim' %></h2>
+    <div class="tbl-scroll">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th><%= lang === 'ru' ? 'Заголовок' : 'Sarlavha' %></th>
+            <th><%= lang === 'ru' ? 'Статус' : 'Holat' %></th>
+            <th><%= lang === 'ru' ? 'Видимость' : 'Ko\'rinish' %></th>
+            <th><%= lang === 'ru' ? 'Просмотры' : 'Ko\'rildi' %></th>
+            <th style="text-align:right"><%= lang === 'ru' ? 'Действия' : 'Amallar' %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (myStreams && myStreams.length > 0) { %>
+            <% myStreams.forEach(function(s) { %>
+              <tr data-sid="<%= s.id %>">
+                <td>#<%= s.id %></td>
+                <td><b><a href="/watch/<%= s.id %>"><%= s.title %></a></b></td>
+                <td><span class="pill <%= s.status === 'live' ? 'live' : 'ended' %>"><%= s.status %></span></td>
+                <td><span class="pill <%= s.visibility === 'public' ? 'pub' : 'priv' %>" data-vis><%= s.visibility %></span></td>
+                <td><%= s.views %></td>
+                <td style="text-align:right">
+                  <div class="acts" style="justify-content:flex-end">
+                    <button class="btn sm sec" data-act="vis" data-v="<%= s.visibility === 'public' ? 'private' : 'public' %>">
+                      <%= s.visibility === 'public' ? (lang === 'ru' ? 'Сделать скрытым' : 'Yopiq qilish') : (lang === 'ru' ? 'Сделать открытым' : 'Ochiq qilish') %>
+                    </button>
+                    <button class="btn sm sec" data-act="edit"><%= lang === 'ru' ? 'Ред.' : 'Tahrirlash' %></button>
+                    <button class="btn sm danger" data-act="del"><%= lang === 'ru' ? 'Удалить' : 'O\'chirish' %></button>
+                  </div>
+                </td>
+              </tr>
+              <tr data-edit="<%= s.id %>" style="display:none;background:#1a1a1a">
+                <td colspan="6">
+                  <form class="stream-edit" data-id="<%= s.id %>" style="padding:10px">
+                    <div class="row">
+                      <div class="field" style="flex:2">
+                        <label><%= lang === 'ru' ? 'Заголовок' : 'Sarlavha' %></label>
+                        <input type="text" name="title" value="<%= s.title %>" required>
+                      </div>
+                      <div class="field" style="flex:1">
+                        <label><%= lang === 'ru' ? 'Видимость' : 'Ko\'rinish' %></label>
+                        <select name="visibility">
+                          <option value="public" <%= s.visibility === 'public' ? 'selected' : '' %>><%= lang === 'ru' ? 'Открытый' : 'Ochiq' %></option>
+                          <option value="private" <%= s.visibility === 'private' ? 'selected' : '' %>><%= lang === 'ru' ? 'Скрытый' : 'Yopiq' %></option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label><%= lang === 'ru' ? 'Описание' : 'Tavsif' %></label>
+                      <textarea name="description"><%= s.description || '' %></textarea>
+                    </div>
+                    <button class="btn sm" type="submit"><%= lang === 'ru' ? 'Сохранить изменения' : 'O\'zgarishlarni saqlash' %></button>
+                  </form>
+                </td>
+              </tr>
+            <% }); %>
+          <% } else { %>
+            <tr><td colspan="6" style="text-align:center;padding:20px"><%= lang === 'ru' ? 'Нет трансляций' : 'Efirlar mavjud emas' %></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="tabpane" id="pane-chat">
+  <div class="panel">
+    <h2>🛡 <%= lang === 'ru' ? 'Модераторы' : 'Moderatorlar' %></h2>
+    <div style="display:flex;gap:8px;margin-bottom:14px;max-width:400px">
+      <input type="text" id="mod-login" placeholder="<%= lang === 'ru' ? 'Логин пользователя' : 'Foydalanuvchi logini' %>" style="flex:1;background:#121212;border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text)">
+      <button class="btn" type="button" id="mod-add"><%= lang === 'ru' ? 'Добавить' : 'Qo‘shish' %></button>
+    </div>
+    <table class="tbl" id="mod-table">
+      <tbody>
+        <% if (moderators && moderators.length > 0) { %>
+          <% moderators.forEach(function(m) { %>
+            <tr data-uid="<%= m.id %>">
+              <td>
+                <span class="urow">
+                  <span class="avatar xs"><%= m.login.charAt(0).toUpperCase() %></span>
+                  <svg class="keyico" viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1a7 7 0 00-9.2-9.1l3.9 3.9-2.8 2.8-3.9-3.9a7 7 0 009.1 9.2l9.1 9.1a1 1 0 001.4 0l1.5-1.5a1 1 0 000-1.4z"/></svg>
+                  <span class="nm mod"><%= m.login %></span>
+                </span>
+              </td>
+              <td style="text-align:right">
+                <button class="btn sm danger" data-act="unmod"><%= lang === 'ru' ? 'Удалить' : 'Olib tashlash' %></button>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+    <div id="mod-none" style="<%= (moderators && moderators.length > 0) ? 'display:none;' : '' %>color:var(--dim2);padding:10px 0">
+      <%= lang === 'ru' ? 'Модераторов пока нет' : 'Hozircha moderatorlar tayinlanmagan' %>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>🚫 <%= lang === 'ru' ? 'Заблокированные пользователи' : 'Bloklangan foydalanuvchilar' %></h2>
+    <table class="tbl">
+      <tbody>
+        <% if (bannedUsers && bannedUsers.length > 0) { %>
+          <% bannedUsers.forEach(function(b) { %>
+            <tr data-uid="<%= b.id %>">
+              <td><b><%= b.login %></b></td>
+              <td style="text-align:right">
+                <button class="btn sm sec" data-act="unban"><%= lang === 'ru' ? 'Разблокировать' : 'Blokni yechish' %></button>
+              </td>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr><td style="color:var(--dim2);padding:10px 0"><%= lang === 'ru' ? 'Заблокированных нет' : 'Bloklanganlar yo\'q' %></td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+<script>
+window.UZ = { T: {
+  copied: "<%= lang === 'ru' ? 'Скопировано' : 'Nusxa olindi' %>",
+  saved: "<%= lang === 'ru' ? 'Сохранено' : 'Saqlandi' %>",
+  error: "<%= lang === 'ru' ? 'Ошибка' : 'Xatolik' %>",
+  del_confirm: "<%= lang === 'ru' ? 'Действительно удалить?' : 'Rostdan ham butunlay o‘chirilsinmi?' %>",
+  reset_confirm: "<%= lang === 'ru' ? 'Сбросить ключ вещания?' : 'Kalit yangilansa, OBS dagi eski kalit ishlamay qoladi. Davom etamizmi?' %>",
+  show_key: "<%= lang === 'ru' ? 'Показать' : 'Ko\'rsatish' %>",
+  hide_key: "<%= lang === 'ru' ? 'Скрыть' : 'Yashirish' %>",
+  make_public: "<%= lang === 'ru' ? 'Сделать открытым' : 'Ochiq qilish' %>",
+  make_private: "<%= lang === 'ru' ? 'Сделать скрытым' : 'Yopiq qilish' %>",
+  public: "<%= lang === 'ru' ? 'Открытый' : 'Ochiq' %>",
+  private: "<%= lang === 'ru' ? 'Скрытый' : 'Yopiq' %>",
+  remove: "<%= lang === 'ru' ? 'Удалить' : 'Olib tashlash' %>",
+  too_big: "<%= lang === 'ru' ? 'Файл слишком большой' : 'Rasm juda katta' %>",
+  bad_image: "<%= lang === 'ru' ? 'Неверный формат изображения' : 'Rasmni o‘qib bo‘lmadi' %>",
+  donate_bad: "<%= lang === 'ru' ? 'Ссылка должна начинаться с https://' : 'Havola saqlanmadi: u https:// bilan boshlanishi kerak' %>"
+} };
+</script>
+<script src="/static/js/studio.js?v=3"></script>
+</div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+  (function () {
+    var uf = document.getElementById('upload-form');
+    if (!uf) return;
+    uf.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = document.getElementById('upload-submit-btn');
+      var st = document.getElementById('upload-status');
+      btn.disabled = true;
+      st.style.display = 'block';
+      st.style.color = 'var(--highlight)';
+      st.textContent = 'Yuklanmoqda… Iltimos kuting.';
+      var fd = new FormData(uf);
+      fetch('/api/studio/upload', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin'
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.ok) {
+          st.style.color = '#7BD88F';
+          st.textContent = 'Video muvaffaqiyatli yuklandi!';
+          setTimeout(function () {
+            window.location.href = '/watch/' + res.streamId;
+          }, 800);
+        } else {
+          throw new Error(res.error || 'Xatolik yuz berdi');
+        }
+      })
+      .catch(function (err) {
+        st.style.color = '#FF9A9A';
+        st.textContent = 'Xatolik: ' + err.message;
+        btn.disabled = false;
+      });
+    });
+  })();
+</script>
+</body>
+</html>

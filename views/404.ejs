@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f0f0f">
+<title>404 — <%= siteName || 'LuminaTube' %></title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/ui-fix.css?v=3">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+<main class="main">
+<div class="wrap">
+<div class="err-page">
+  <div class="c">404</div>
+  <p style="color:var(--dim);margin:10px 0 22px"><%= lang === 'ru' ? 'Не найдено' : 'Topilmadi' %></p>
+  <a class="btn" href="/"><%= lang === 'ru' ? 'На главную' : 'Bosh sahifa' %></a>
+</div>
+</div>
+</main>
+</body>
+</html>
