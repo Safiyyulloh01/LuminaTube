@@ -208,9 +208,17 @@ app.get('/', requireAuth, (req, res) => {
   const q = (req.query.q || '').trim();
   res.locals.currentTab = 'home';
   res.locals.query = q;
+  const currentUserId = req.session.user ? req.session.user.id : -1;
 
   let liveQuery = "SELECT s.*, u.login as user_login, u.title as user_title, u.avatar FROM streams s JOIN users u ON s.user_id = u.id WHERE s.status = 'live' AND s.visibility = 'public'";
-  let endedQuery = "SELECT s.*, u.login as user_login, u.title as user_title, u.avatar FROM streams s JOIN users u ON s.user_id = u.id WHERE s.status = 'ended' AND s.visibility = 'public'";
+  let endedQuery = `
+    SELECT s.*, u.login as user_login, u.title as user_title, u.avatar,
+           wh.cmt as watch_cmt, wh.len as watch_len, wh.completed as watch_completed
+    FROM streams s
+    JOIN users u ON s.user_id = u.id
+    LEFT JOIN watch_history wh ON wh.stream_id = s.id AND wh.user_id = ${currentUserId}
+    WHERE s.status = 'ended' AND s.visibility = 'public'
+  `;
   let params = [];
 
   if (q) {
@@ -272,6 +280,14 @@ app.get('/watch/:id', requireAuth, (req, res) => {
   }
   stream.play_url = playUrl;
 
+  let resumePosition = 0;
+  if (req.session.user) {
+    const history = db.prepare('SELECT cmt, completed FROM watch_history WHERE user_id = ? AND stream_id = ?').get(req.session.user.id, id);
+    if (history && !history.completed && history.cmt > 5) {
+      resumePosition = Math.floor(history.cmt);
+    }
+  }
+
   res.render('watch', {
     stream,
     subCount,
@@ -280,7 +296,8 @@ app.get('/watch/:id', requireAuth, (req, res) => {
     isLiked,
     isOwner,
     canMod,
-    comments
+    comments,
+    resumePosition
   });
 });
 
@@ -290,8 +307,15 @@ app.get('/c/:login', requireAuth, (req, res) => {
   const channel = db.prepare('SELECT * FROM users WHERE login = ?').get(login);
   if (!channel) return res.status(404).render('404');
 
+  const currentUserId = req.session.user ? req.session.user.id : -1;
   const subCount = db.prepare('SELECT COUNT(*) as c FROM subscriptions WHERE channel_id = ?').get(channel.id).c;
-  const streams = db.prepare("SELECT * FROM streams WHERE user_id = ? AND visibility = 'public' ORDER BY id DESC").all(channel.id);
+  const streams = db.prepare(`
+    SELECT s.*, wh.cmt as watch_cmt, wh.len as watch_len, wh.completed as watch_completed
+    FROM streams s
+    LEFT JOIN watch_history wh ON wh.stream_id = s.id AND wh.user_id = ?
+    WHERE s.user_id = ? AND s.visibility = 'public'
+    ORDER BY s.id DESC
+  `).all(currentUserId, channel.id);
 
   const isSubscribed = req.session.user
     ? !!db.prepare('SELECT 1 FROM subscriptions WHERE subscriber_id = ? AND channel_id = ?').get(req.session.user.id, channel.id)
@@ -302,14 +326,17 @@ app.get('/c/:login', requireAuth, (req, res) => {
 
 app.get('/subs', requireAuth, (req, res) => {
   res.locals.currentTab = 'subs';
+  const currentUserId = req.session.user ? req.session.user.id : -1;
   const streams = db.prepare(`
-    SELECT s.*, u.login as user_login, u.title as user_title, u.avatar
+    SELECT s.*, u.login as user_login, u.title as user_title, u.avatar,
+           wh.cmt as watch_cmt, wh.len as watch_len, wh.completed as watch_completed
     FROM streams s
     JOIN users u ON s.user_id = u.id
-    JOIN subscriptions sub ON sub.channel_id = u.id
-    WHERE sub.subscriber_id = ? AND s.visibility = 'public'
+    JOIN subscriptions sub ON sub.channel_id = s.user_id AND sub.subscriber_id = ?
+    LEFT JOIN watch_history wh ON wh.stream_id = s.id AND wh.user_id = ?
+    WHERE s.visibility = 'public'
     ORDER BY s.id DESC
-  `).all(req.session.user.id);
+  `).all(currentUserId, currentUserId);
 
   res.render('subs', { streams });
 });
@@ -537,6 +564,82 @@ app.delete('/api/comment/:id', requireAuth, (req, res) => {
 
 app.get('/api/viewers/:id', (req, res) => {
   res.json({ n: 0 });
+});
+
+// YouTube-style Playback & Watchtime Telemetry Beacons
+function handleTelemetry(req, res) {
+  const params = { ...req.query, ...req.body };
+  const rawDocId = params.docid || params.videoId || params.streamId || params.id;
+  const rawCmt = params.cmt !== undefined ? params.cmt : (params.currentTime !== undefined ? params.currentTime : params.time);
+  const rawLen = params.len !== undefined ? params.len : params.duration;
+
+  const streamId = parseInt(rawDocId, 10);
+  const cmt = parseFloat(rawCmt);
+  const len = parseFloat(rawLen) || 0;
+
+  if (!streamId || isNaN(streamId) || isNaN(cmt) || cmt < 0) {
+    return res.status(400).json({ error: 'Invalid telemetry parameters' });
+  }
+
+  // Gracefully accept beacon for guest / unauthenticated sessions
+  if (!req.session || !req.session.user) {
+    return res.status(204).end();
+  }
+
+  const userId = req.session.user.id;
+
+  // Completion threshold: past ~90–95% of video duration (or <= 15s remaining for long videos)
+  const isCompleted = (len > 0) && (cmt / len >= 0.90 || (len - cmt <= 15 && len >= 60));
+  const resumeCmt = isCompleted ? 0 : Math.max(0, cmt);
+  const completedFlag = isCompleted ? 1 : 0;
+
+  try {
+    db.prepare(`
+      INSERT INTO watch_history (user_id, stream_id, cmt, len, completed, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id, stream_id) DO UPDATE SET
+        cmt = excluded.cmt,
+        len = CASE WHEN excluded.len > 0 THEN excluded.len ELSE watch_history.len END,
+        completed = excluded.completed,
+        updated_at = CURRENT_TIMESTAMP
+    `).run(userId, streamId, resumeCmt, len, completedFlag);
+  } catch (err) {
+    console.error('Telemetry beacon database error:', err.message);
+  }
+
+  if (req.method === 'GET' && !req.headers.accept?.includes('application/json')) {
+    return res.status(204).end();
+  }
+
+  if (req.xhr || req.headers.accept?.includes('application/json')) {
+    return res.json({ status: 'ok', docid: streamId, cmt: resumeCmt, len, completed: isCompleted });
+  }
+
+  res.status(204).end();
+}
+
+app.all('/api/stats/watchtime', handleTelemetry);
+app.all('/api/stats/playback', handleTelemetry);
+
+app.get('/api/stats/playback-info/:id', (req, res) => {
+  const streamId = parseInt(req.params.id, 10);
+  if (!streamId || isNaN(streamId)) {
+    return res.status(400).json({ error: 'Invalid stream ID' });
+  }
+  if (!req.session || !req.session.user) {
+    return res.json({ streamId, resumePosition: 0, completed: false });
+  }
+  const history = db.prepare('SELECT cmt, len, completed, updated_at FROM watch_history WHERE user_id = ? AND stream_id = ?').get(req.session.user.id, streamId);
+  if (!history || history.completed || history.cmt <= 5) {
+    return res.json({ streamId, resumePosition: 0, completed: !!(history && history.completed) });
+  }
+  return res.json({
+    streamId,
+    resumePosition: Math.floor(history.cmt),
+    len: history.len,
+    completed: false,
+    updatedAt: history.updated_at
+  });
 });
 
 app.post('/api/studio/upload', requireAuth, upload.fields([

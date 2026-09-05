@@ -91,6 +91,20 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (channel_id, user_id)
   );
+
+  CREATE TABLE IF NOT EXISTS watch_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    stream_id INTEGER NOT NULL REFERENCES streams(id) ON DELETE CASCADE,
+    cmt REAL DEFAULT 0,
+    len REAL DEFAULT 0,
+    completed INTEGER DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, stream_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_watch_history_user ON watch_history(user_id, stream_id);
+  CREATE INDEX IF NOT EXISTS idx_watch_history_updated ON watch_history(user_id, updated_at DESC);
 `);
 
 module.exports = db;

@@ -54,6 +54,40 @@
     sel.addEventListener('change', function () { hls.currentLevel = parseInt(sel.value, 10); });
     box.appendChild(sel);
   }
+  function formatMediaTime(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    if (h > 0) {
+      return h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function getUrlTimestamp() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var t = params.get('t') || params.get('time');
+      if (!t && window.location.hash) {
+        var match = window.location.hash.match(/[#&?]t=([0-9hms]+)/i);
+        if (match) t = match[1];
+      }
+      if (!t) return 0;
+      if (/^\d+$/.test(t)) return parseInt(t, 10);
+      var sec = 0;
+      var h = t.match(/(\d+)h/i);
+      var m = t.match(/(\d+)m/i);
+      var s = t.match(/(\d+)s/i);
+      if (h) sec += parseInt(h[1], 10) * 3600;
+      if (m) sec += parseInt(m[1], 10) * 60;
+      if (s) sec += parseInt(s[1], 10);
+      return sec;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   function initPlayer() {
     var box = document.getElementById('player-box');
     if (!box || !UZ.playUrl) return;
@@ -317,6 +351,167 @@
           art.on('video:seeked', updateDvrUI);
           art.on('video:progress', updateDvrUI);
           setInterval(updateDvrUI, 1000);
+        }
+
+        // Telemetry Beacons & Resume Playback (YouTube-style)
+        if (!UZ.isLive && UZ.streamId) {
+          var urlTime = getUrlTimestamp();
+          var initialSeek = 0;
+
+          if (urlTime > 0) {
+            initialSeek = urlTime;
+          } else if (UZ.resumePosition > 5) {
+            initialSeek = UZ.resumePosition;
+          } else {
+            // LocalStorage fallback for guests / offline cross-session
+            try {
+              var cached = JSON.parse(localStorage.getItem('lt_resume_' + UZ.streamId) || 'null');
+              if (cached && cached.cmt > 5 && (!cached.len || cached.cmt / cached.len < 0.90)) {
+                initialSeek = Math.floor(cached.cmt);
+              }
+            } catch (e) {}
+          }
+
+          var hasResumed = false;
+          function applyResume() {
+            if (hasResumed || initialSeek <= 0) return;
+            var vid = art.video;
+            if (!vid) return;
+            if (vid.duration && vid.duration > 0 && initialSeek >= vid.duration * 0.90) {
+              return; // video was already completed
+            }
+            hasResumed = true;
+            try {
+              art.currentTime = initialSeek;
+              var tStr = formatMediaTime(initialSeek);
+              var msg = (UZ.T && UZ.T.resumed_from)
+                ? UZ.T.resumed_from.replace('{t}', tStr)
+                : ('Resumed from ' + tStr);
+              art.notice.show = msg;
+            } catch (e) {}
+          }
+
+          art.on('ready', function () {
+            if (art.video && art.video.readyState >= 1) {
+              applyResume();
+            }
+          });
+          art.on('video:loadedmetadata', applyResume);
+          art.on('video:canplay', applyResume);
+
+          // Telemetry Beacons (Client to Server)
+          var lastSentCmt = -1;
+          var lastSentTs = 0;
+          var heartbeatInterval = null;
+
+          function emitTelemetry(reason, isBeacon) {
+            var vid = art.video;
+            if (!vid) return;
+            var cmt = vid.currentTime || 0;
+            var len = vid.duration || art.duration || 0;
+            if (isNaN(cmt) || cmt < 0) return;
+
+            // Sync with local storage for instant offline cache
+            try {
+              if (len > 0 && cmt / len >= 0.90) {
+                localStorage.removeItem('lt_resume_' + UZ.streamId);
+              } else if (cmt > 3) {
+                localStorage.setItem('lt_resume_' + UZ.streamId, JSON.stringify({ cmt: cmt, len: len, ts: Date.now() }));
+              }
+            } catch (e) {}
+
+            var now = Date.now();
+            if (!isBeacon && Math.abs(cmt - lastSentCmt) < 0.5 && (now - lastSentTs) < 2000) {
+              return;
+            }
+            lastSentCmt = cmt;
+            lastSentTs = now;
+
+            var roundedCmt = Math.round(cmt * 10) / 10;
+            var roundedLen = Math.round(len);
+            var query = 'docid=' + encodeURIComponent(UZ.streamId) +
+              '&cmt=' + encodeURIComponent(roundedCmt) +
+              '&len=' + encodeURIComponent(roundedLen) +
+              '&reason=' + encodeURIComponent(reason || 'heartbeat');
+
+            var beaconUrl = '/api/stats/watchtime?' + query;
+
+            // 1. Unload / visibility change: prioritize navigator.sendBeacon
+            if (isBeacon && navigator.sendBeacon) {
+              try {
+                if (navigator.sendBeacon(beaconUrl)) return;
+              } catch (e) {}
+            }
+
+            // 2. Fetch with keepalive: true (background HTTP request)
+            if (window.fetch) {
+              window.fetch(beaconUrl, {
+                method: 'POST',
+                keepalive: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  docid: UZ.streamId,
+                  cmt: roundedCmt,
+                  len: roundedLen,
+                  reason: reason || 'heartbeat'
+                })
+              }).catch(function () {});
+            } else {
+              // 3. Fallback tracking ping
+              var img = new Image();
+              img.src = beaconUrl + '&_t=' + now;
+            }
+          }
+
+          // Periodic telemetry ping every 5 seconds during active playback
+          art.on('video:play', function () {
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(function () {
+              if (art.video && !art.video.paused && !art.video.ended) {
+                emitTelemetry('heartbeat', false);
+              }
+            }, 5000);
+          });
+
+          // Immediate telemetry ping on pause
+          art.on('video:pause', function () {
+            if (heartbeatInterval) {
+              clearInterval(heartbeatInterval);
+              heartbeatInterval = null;
+            }
+            emitTelemetry('pause', false);
+          });
+
+          // Immediate telemetry ping on seeking
+          art.on('video:seeked', function () {
+            emitTelemetry('seek', false);
+          });
+
+          // Telemetry ping on video end
+          art.on('video:ended', function () {
+            if (heartbeatInterval) {
+              clearInterval(heartbeatInterval);
+              heartbeatInterval = null;
+            }
+            emitTelemetry('ended', false);
+          });
+
+          // Telemetry beacons on tab close, navigate away, or backgrounding
+          window.addEventListener('beforeunload', function () {
+            emitTelemetry('unload', true);
+          });
+          window.addEventListener('pagehide', function () {
+            emitTelemetry('pagehide', true);
+          });
+          document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') {
+              emitTelemetry('visibility_hidden', true);
+            }
+          });
+          art.on('destroy', function () {
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            emitTelemetry('destroy', true);
+          });
         }
 
         // Sync theater mode with page layout

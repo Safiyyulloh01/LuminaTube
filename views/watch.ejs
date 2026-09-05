@@ -169,6 +169,7 @@ window.UZ = {
   canMod: <%= canMod %>,
   isOwner: <%= isOwner %>,
   meId: <%= currentUser ? currentUser.id : 'null' %>,
+  resumePosition: <%= typeof resumePosition !== 'undefined' ? resumePosition : 0 %>,
   T: {
     slow_hint: "<%= lang === 'ru' ? 'Медленный режим: 1 сообщение в {n} с' : 'Sekin rejim: har {n} soniyada 1 ta xabar' %>",
     wait: "{n} s",
@@ -190,7 +191,8 @@ window.UZ = {
     p_wait: "<%= lang === 'ru' ? 'Подключение к потоку…' : 'Oqim ulanmoqda…' %>",
     p_offline: "<%= lang === 'ru' ? 'Поток не найден' : 'Oqim topilmadi' %>",
     p_hlsfail: "<%= lang === 'ru' ? 'Ошибка библиотеки плеера' : 'Pleyer kutubxonasi yuklanmadi' %>",
-    newmsg: "<%= lang === 'ru' ? 'Новые' : 'Yangi' %>"
+    newmsg: "<%= lang === 'ru' ? 'Новые' : 'Yangi' %>",
+    resumed_from: "<%= lang === 'ru' ? 'Возобновлено с {t}' : '{t} dan davom ettirilmoqda' %>"
   }
 };
 </script>

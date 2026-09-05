@@ -55,6 +55,11 @@
           <% if (s.duration) { %>
             <span class="badge"><%= s.duration %></span>
           <% } %>
+          <% if (s.watch_cmt && s.watch_len && !s.watch_completed && s.watch_cmt > 5) { %>
+            <div class="resume-progress-bar" style="position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(255,255,255,0.25);z-index:2;border-radius:0 0 8px 8px;overflow:hidden">
+              <div style="height:100%;background:#ff0000;width:<%= Math.min(100, Math.round((s.watch_cmt / s.watch_len) * 100)) %>%"></div>
+            </div>
+          <% } %>
         </div>
         <div class="meta">
           <div style="min-width:0">
