@@ -27,7 +27,7 @@
     <h1><%= channel.title || channel.login %></h1>
     <div class="m">@<%= channel.login %> · <span id="sub-count"><%= subCount %></span> <%= lang === 'ru' ? 'подписчиков' : 'obunachi' %> · <%= streams.length %> <%= lang === 'ru' ? 'эфиров' : 'yakunlangan efirlar' %></div>
     <% if (channel.about) { %>
-      <div style="color:var(--dim);margin-top:6px;font-size:13.5px"><%= channel.about %></div>
+      <div style="color:var(--dim);margin-top:6px;font-size:13.5px"><%- linkify(channel.about) %></div>
     <% } %>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">

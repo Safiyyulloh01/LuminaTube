@@ -641,20 +641,46 @@
     }
   }
   function initChat() {
-    var wrap = document.getElementById('chatbox');
-    if (!wrap || !window.io) return;
+    var wrap = document.getElementById('chatbox') || document.getElementById('chat-card');
+    if (!wrap) return;
     var msgsEl = document.getElementById('chat-msgs');
-    var input = document.getElementById('chat-input');
-    var sendBtn = document.getElementById('chat-send');
-    var sendHtml = sendBtn.innerHTML;
+    var input = document.getElementById('chat-in') || document.getElementById('chat-input');
+    var sendBtn = document.getElementById('send-btn') || document.getElementById('chat-send');
+    var form = document.getElementById('chat-form');
     var hint = document.getElementById('chat-hint');
-    var pinBox = document.getElementById('pinned');
-    var pinTxt = document.getElementById('pinned-txt');
+    var pinBox = document.getElementById('pin-box') || document.getElementById('pinned');
+    var pinTxt = document.getElementById('pin-txt') || document.getElementById('pinned-txt');
     var ctx = document.getElementById('user-ctx');
     var ctxName = document.getElementById('ctx-name');
     var ctxOwner = document.getElementById('ctx-owner-only');
-    var newPill = document.getElementById('newmsg');
+    var newPill = document.getElementById('new-pill') || document.getElementById('newmsg');
     var emojiBar = document.getElementById('emoji-bar');
+
+    // Intercept form submit to guarantee page never reloads
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+      });
+    }
+
+    // For ended / VOD streams, disable chat input cleanly
+    if (!UZ.isLive) {
+      if (input) {
+        input.disabled = true;
+        input.placeholder = (UZ.T && UZ.T.ended) ? UZ.T.ended : 'Efir yakunlandi';
+      }
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5';
+        sendBtn.style.cursor = 'not-allowed';
+      }
+      if (emojiBar) emojiBar.style.display = 'none';
+      if (hint) hint.textContent = (UZ.T && UZ.T.ended) ? UZ.T.ended : 'Efir yakunlandi';
+      return;
+    }
+
+    if (!window.io || !input || !sendBtn) return;
+    var sendHtml = sendBtn.innerHTML;
     var state = { slowMode: 8, chatEnabled: true };
     var timerId = null;
     var target = { userId: 0, login: '', msgId: 0 };
@@ -867,7 +893,39 @@
       else if (a === 'demote') socket.emit('mod:demote', { userId: target.userId });
       ctx.classList.remove('open');
     });
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        send();
+      });
+    }
   }
+
+  function initTimestampSeek() {
+    document.addEventListener('click', function (e) {
+      var ts = e.target.closest('.ts-lnk');
+      if (ts && ts.dataset.time && window.art) {
+        e.preventDefault();
+        var sec = parseFloat(ts.dataset.time);
+        if (!isNaN(sec)) {
+          window.art.currentTime = sec;
+          window.art.play().catch(function () {});
+          if (window.art.notice) window.art.notice.show = 'Jumped to ' + ts.textContent;
+        }
+      }
+    });
+
+    // Mobile tap: remove sticky focus/hover effect on touch release
+    document.addEventListener('pointerup', function (e) {
+      var btn = e.target.closest('button, .chip, .btn');
+      if (btn) {
+        setTimeout(function () {
+          try { btn.blur(); } catch (err) {}
+        }, 150);
+      }
+    });
+  }
+
   function pollViewers() {
     if (!UZ.isLive || document.getElementById('chatbox')) return;
     setInterval(function () {
@@ -884,6 +942,7 @@
     initActions();
     initComments();
     initChat();
+    initTimestampSeek();
     pollViewers();
   });
 })();

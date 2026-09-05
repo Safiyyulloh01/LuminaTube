@@ -127,6 +127,7 @@ button { cursor: pointer; }
   position: fixed; top: var(--header-h); left: 0; bottom: 0; width: var(--side-w);
   background: var(--bg); padding: 12px 8px; overflow-y: auto; z-index: 50;
   border-right: 1px solid var(--border);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .side a {
   display: flex; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 10px; color: var(--text);
@@ -137,13 +138,31 @@ button { cursor: pointer; }
 .side svg { width: 22px; height: 22px; fill: currentColor; flex: 0 0 auto; }
 .side .sep { border-top: 1px solid var(--border); margin: 10px 6px; }
 .side .lbl { padding: 8px 12px; color: var(--dim2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
-.main { margin-left: var(--side-w); padding: var(--header-h) 0 60px; min-height: 100vh; background: var(--bg); }
+.main {
+  margin-left: var(--side-w); padding: var(--header-h) 0 60px; min-height: 100vh; background: var(--bg);
+  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
 .wrap { max-width: 1600px; margin: 0 auto; padding: 20px 24px; }
-body.nosidebar .side { display: none; }
-body.nosidebar .main { margin-left: 0; }
+body.nosidebar .side,
+body.side-collapsed .side { transform: translateX(-100%); }
+body.nosidebar .main,
+body.side-collapsed .main { margin-left: 0; }
+.side-backdrop { display: none; }
 @media(max-width: 1000px) {
-  .side { transform: translateX(-100%); transition: transform 0.2s; }
+  .side {
+    transform: translateX(-100%);
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.75);
+    z-index: 100;
+  }
   body.side-open .side { transform: none; }
+  body.side-open .side-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 90;
+    backdrop-filter: blur(2px);
+  }
   .main { margin-left: 0; }
   .wrap { padding: 14px 12px; }
 }
@@ -258,15 +277,27 @@ body.nosidebar .main { margin-left: 0; }
 .chip {
   background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 8px 16px;
   display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; white-space: nowrap; color: var(--text);
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.chip:hover { background: var(--hover-sec); color: #fff; border-color: var(--highlight); }
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover { background: var(--hover-sec); color: #fff; border-color: var(--highlight); }
+  .chip.primary:hover { background: var(--hover-sec); border-color: var(--highlight); }
+}
+.chip:active {
+  transform: scale(0.96);
+  opacity: 0.88;
+}
+.chip:focus:not(:focus-visible) {
+  outline: none;
+}
 .chip svg { width: 18px; height: 18px; fill: currentColor; }
 .chip.primary {
   background: var(--cobalt); color: #fff; border-color: var(--cobalt);
   box-shadow: 0 2px 10px rgba(0, 71, 171, 0.35);
 }
-.chip.primary:hover { background: var(--hover-sec); border-color: var(--highlight); }
 .chip.on {
   background: var(--hover-sec); color: var(--cyan-light); border-color: var(--highlight);
 }
@@ -367,10 +398,22 @@ body.nosidebar .main { margin-left: 0; }
 .btn {
   background: var(--cobalt); color: #fff; border: 0; border-radius: 20px; padding: 9px 18px; font-weight: 600;
   transition: background 0.15s, transform 0.1s;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.btn:hover { background: var(--hover-sec); filter: brightness(1.1); }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { background: var(--hover-sec); filter: brightness(1.1); }
+  .btn.sec:hover { background: var(--hover-sec); color: #fff; border-color: var(--highlight); }
+}
+.btn:active {
+  transform: scale(0.96);
+  opacity: 0.88;
+}
+.btn:focus:not(:focus-visible) {
+  outline: none;
+}
 .btn.sec { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-.btn.sec:hover { background: var(--hover-sec); color: #fff; border-color: var(--highlight); }
 .btn.danger { background: #C62828; color: #fff; }
 .btn.sm { padding: 5px 11px; font-size: 12.5px; border-radius: 14px; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }

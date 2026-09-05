@@ -48,7 +48,23 @@
     d.textContent = s == null ? '' : String(s);
     return d.innerHTML;
   };
+  window.toggleSidebar = function () {
+    if (window.innerWidth <= 1000) {
+      document.body.classList.toggle('side-open');
+    } else {
+      document.body.classList.toggle('side-collapsed');
+    }
+  };
   ready(function () {
+    // Clear sticky mobile button press/focus effect on touch release
+    document.addEventListener('pointerup', function (e) {
+      var btn = e.target.closest('button, .chip, .btn');
+      if (btn) {
+        setTimeout(function () {
+          try { btn.blur(); } catch (err) {}
+        }, 150);
+      }
+    });
     window.T = (window.UZ && window.UZ.T) || {};
     var mb = document.getElementById('umenu-btn');
     var mm = document.getElementById('umenu');

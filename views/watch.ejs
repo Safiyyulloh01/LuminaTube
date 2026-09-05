@@ -70,7 +70,7 @@
             <span><%= lang === 'ru' ? 'Запись эфира' : 'Yakunlangan efir' %></span>
           <% } %>
         </div>
-        <div class="txt"><%= stream.description || '' %></div>
+        <div class="txt"><%- linkify(stream.description || '') %></div>
       </div>
       <div class="comments">
         <h3><%= comments.length %> <%= lang === 'ru' ? 'комментариев' : 'ta izoh' %></h3>
@@ -135,7 +135,7 @@
           <button class="chip sm" type="button" data-e="😂">😂</button>
           <button class="chip sm" type="button" data-e="🚀">🚀</button>
         </div>
-        <form id="chat-form" style="display:flex;gap:6px">
+        <form id="chat-form" style="display:flex;gap:6px" onsubmit="event.preventDefault()">
           <input type="text" id="chat-in" placeholder="<%= lang === 'ru' ? 'Написать в чат…' : 'Xabar yozing…' %>" maxlength="300" style="flex:1;background:#121212;border:1px solid var(--border);border-radius:18px;padding:7px 14px;color:var(--text);outline:none">
           <button class="btn sm" id="send-btn" type="submit"><%= lang === 'ru' ? 'Отправить' : 'Yuborish' %></button>
         </form>

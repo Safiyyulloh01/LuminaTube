@@ -159,6 +159,37 @@ app.use('/hls', express.static(path.join(__dirname, 'public/hls'), {
   }
 }));
 
+function linkify(text) {
+  if (!text) return '';
+  const escaped = String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  // Markdown links [title](https://url)
+  let formatted = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)\"\'<>]+)\)/gi, (m, title, url) => {
+    return `<a href="${url}" class="lnk" target="_blank" rel="noopener noreferrer nofollow">${title}</a>`;
+  });
+
+  // Raw URLs (http:// or https://)
+  formatted = formatted.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/gi, (m, prefix, url) => {
+    return `${prefix}<a href="${url}" class="lnk" target="_blank" rel="noopener noreferrer nofollow">${url}</a>`;
+  });
+
+  // Timestamps like 01:23 or 1:23:45
+  formatted = formatted.replace(/(^|[\s(])(\b(?:\d{1,2}:)?\d{1,2}:\d{2}\b)/gi, (m, prefix, timeStr) => {
+    const parts = timeStr.split(':').map(Number);
+    let seconds = 0;
+    if (parts.length === 3) seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    else if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
+    return `${prefix}<a href="#t=${seconds}" class="lnk ts-lnk" data-time="${seconds}" title="Jump to ${timeStr}">${timeStr}</a>`;
+  });
+
+  return formatted;
+}
+
 app.use((req, res, next) => {
   if (req.session.user) {
     const fresh = db.prepare('SELECT id, login, role, title, avatar, stream_key, donate_url FROM users WHERE id = ?').get(req.session.user.id);
@@ -169,6 +200,7 @@ app.use((req, res, next) => {
   res.locals.siteName = SITE_NAME;
   res.locals.host = req.headers.host;
   res.locals.currentTab = '';
+  res.locals.linkify = linkify;
   next();
 });
 
