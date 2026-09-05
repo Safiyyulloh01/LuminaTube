@@ -161,24 +161,35 @@ app.use('/hls', express.static(path.join(__dirname, 'public/hls'), {
 
 function linkify(text) {
   if (!text) return '';
-  const escaped = String(text)
+
+  // 1. Normalize pre-existing HTML link tags or <br> into clean text
+  let cleaned = String(text)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<a\s+(?:[^>]*?\s+)?href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, (m, href, label) => {
+      const cleanLabel = label.trim();
+      if (!cleanLabel || cleanLabel === href) return href;
+      return '[' + cleanLabel + '](' + href + ')';
+    });
+
+  // 2. HTML escape to eliminate XSS
+  const escaped = cleaned
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-  // Markdown links [title](https://url)
+  // 3. Markdown links [title](https://url)
   let formatted = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)\"\'<>]+)\)/gi, (m, title, url) => {
     return `<a href="${url}" class="lnk" target="_blank" rel="noopener noreferrer nofollow">${title}</a>`;
   });
 
-  // Raw URLs (http:// or https://)
-  formatted = formatted.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/gi, (m, prefix, url) => {
+  // 4. Raw URLs (http:// or https://)
+  formatted = formatted.replace(/(^|[\s(>])(https?:\/\/[^\s<)]+)/gi, (m, prefix, url) => {
     return `${prefix}<a href="${url}" class="lnk" target="_blank" rel="noopener noreferrer nofollow">${url}</a>`;
   });
 
-  // Timestamps like 01:23 or 1:23:45
+  // 5. Timestamps like 01:23 or 1:23:45
   formatted = formatted.replace(/(^|[\s(])(\b(?:\d{1,2}:)?\d{1,2}:\d{2}\b)/gi, (m, prefix, timeStr) => {
     const parts = timeStr.split(':').map(Number);
     let seconds = 0;
